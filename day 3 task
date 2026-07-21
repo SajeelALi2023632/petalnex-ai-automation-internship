@@ -1,0 +1,90 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f28876f2-5d33-4118-b67f-50f228c0ce1f",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n     { json: { Name: \"Alice\", Email: \"alice@example.com\", Department: \"Engineering\", Score: 85 } },\n     { json: { Name: \"Bob\", Email: \"bob@example.com\", Department: \"Sales\", Score: 72 } },\n     { json: { Name: \"Carla\", Email: \"carla@example.com\", Department: \"HR\", Score: 45 } },\n   ];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "faf0c153-4832-4695-906a-2d1f3d98d62a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d42f71df-94e0-438a-99b5-7a8887d80ca6",
+              "name": "classification",
+              "value": "={{ $json.Score >= 80 ? \"Excellent\" : $json.Score >= 60 ? \"Good\" : \"Needs Improvement\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "7c6d6e2e-48ce-4e1a-b363-b4ba90351896",
+      "name": "edit"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "edit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e66e7e4f-3037-4971-9053-be79432c3c61",
+  "meta": {
+    "instanceId": "19b20340ed07e1c6164b16b51f151f17469e202d38987bd410fe8f4fc47ae4b1"
+  },
+  "nodeGroups": [],
+  "id": "LztcIJIXhH1IY5YQ",
+  "tags": []
+}
