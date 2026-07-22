@@ -1,0 +1,119 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7f7faacb-9e8a-46b2-bf64-497e7f117ce9",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d442d7eb-9f86-41d3-a86b-9e245eb9864f",
+              "name": "alert",
+              "value": "Good morning – please submit your daily internship progress before end of day.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "6f01b653-d02b-4f56-86a0-e36c4758455f",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "sendTo": "sajeelali307@gmail.com",
+        "subject": "reminder",
+        "emailType": "text",
+        "message": "={{ $json.alert }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        0
+      ],
+      "id": "da9ea46b-a136-4bf6-a90c-a46597563170",
+      "name": "Send a message",
+      "webhookId": "83988672-1de6-430b-bdc8-37830279bec6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3f1OICnvVYmXgwUA",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "7dabc602-42a4-485f-ad02-d171a304ce5d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19b20340ed07e1c6164b16b51f151f17469e202d38987bd410fe8f4fc47ae4b1"
+  },
+  "nodeGroups": [],
+  "id": "VdlyXQSfnIj8e2Ko",
+  "tags": []
+}
