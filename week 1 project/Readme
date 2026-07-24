@@ -1,1 +1,145 @@
+# Candidate Screening Automation
+
+An n8n workflow that automates candidate screening end-to-end — reading applicant data from Google Sheets, validating it, scoring candidates against hiring criteria, categorizing them, writing the decision back to the sheet, and emailing each candidate a personalized result.
+
+---
+
+## Problem Statement
+
+Manually screening candidates — reading through spreadsheets, checking for missing information, applying hiring criteria consistently, and emailing every applicant individually — is slow, repetitive, and prone to human error (inconsistent decisions, missed candidates, delayed responses). As application volume grows, this manual process doesn't scale.
+
+## Objective
+
+Build an automated n8n workflow that:
+- Reads candidate applications directly from a Google Sheet
+- Validates that all required fields are present
+- Applies a consistent, rules-based scoring system (Degree + Experience)
+- Categorizes each candidate as **Shortlisted**, **Waitlisted**, or **Rejected**
+- Writes the decision back into the sheet
+- Sends each candidate a personalized email matching their outcome
+
+---
+
+## Workflow Architecture
+
+```
+Get row(s) in sheet
+        │
+        ▼
+Code in JavaScript        (Validate Required Fields)
+        │
+        ▼
+Code in JavaScript1       (Apply Screening Rules / Scoring)
+        │
+        ▼
+     Switch                (Categorize Candidate — 3 branches)
+   ┌────┼────┐
+   ▼    ▼    ▼
+Edit  Edit  Edit
+Fields Fields1 Fields2     (Set Decision label per branch)
+   │    │    │
+   └────┼────┘
+        ▼
+      Merge                (append branches back into one stream)
+        │
+        ▼
+Update row in sheet         (write Decision, matched by Email)
+        │
+        ▼
+     Switch1                (Route by Decision — 3 branches)
+   ┌────┼────┐
+   ▼    ▼    ▼
+Send  Send  Send
+message message1 message2  (Gmail — Shortlisted / Waitlisted / Rejected)
+```
+
+## Technologies Used
+
+- **n8n** (workflow automation platform)
+- **Google Sheets API** (read/write candidate data)
+- **Gmail API** (send decision emails)
+- **JavaScript** (Code nodes — validation and scoring logic)
+
+## Nodes Used
+
+| Node | Type | Purpose |
+|---|---|---|
+| Get row(s) in sheet | Google Sheets (Read) | Reads all candidate rows |
+| Code in JavaScript | Code | Validates required fields (`isValid`, `missingFields`) |
+| Code in JavaScript1 | Code | Scores candidates on Degree + Experience (`degreePoints`, `expPoints`, `score`) |
+| Switch | Switch (rules) | Routes candidates by score into 3 branches |
+| Edit Fields / Edit Fields1 / Edit Fields2 | Set | Assigns the `Decision` label per branch (shortlisted / waitlisted / rejected) |
+| Merge | Merge (append) | Recombines all branches into a single stream |
+| Update row in sheet | Google Sheets (Update) | Writes `Decision` back, matched on `Email` |
+| Switch1 | Switch (rules) | Routes candidates by `Decision` toward the correct email |
+| Send a message / 1 / 2 | Gmail | Sends the personalized decision email |
+
+---
+
+## Setup Instructions
+
+1. Import `workflow/workflow.json` into your n8n instance (**Workflows → Import from File**).
+2. Attach your **Google Sheets OAuth2** credential to the "Get row(s) in sheet" and "Update row in sheet" nodes.
+3. Attach your **Gmail OAuth2** credential to all three "Send a message" nodes.
+4. Point the Google Sheets nodes at your spreadsheet (paste your Sheet URL/ID) and confirm the tab name.
+5. Load `sample-data/sample_input.csv` into that sheet to test.
+6. Run the workflow manually (or trigger it on a schedule) and confirm the `Decision` column updates and emails are sent.
+
+## Credentials Required
+
+> Names only — no keys, tokens, or passwords are stored anywhere in this repository.
+
+- **Google Sheets OAuth2** — used to read and update the candidate spreadsheet
+- **Gmail OAuth2** — used to send decision emails to candidates
+
+---
+
+## Workflow Explanation
+
+1. **Get row(s) in sheet** pulls every candidate row (`Name`, `Email`, `Degree`, `Skills`, `Experience`, `Availability`) from the source spreadsheet.
+2. **Code in JavaScript** checks that all required fields are present, setting `isValid` (true/false) and `missingFields` (a comma-separated list, or `"None"` if nothing is missing).
+3. **Code in JavaScript1** scores each candidate: Degree contributes 0–3 points (PhD > Master's > Bachelor's > none), Experience contributes 0–2 points (3+ years, 1–2 years, under 1 year), combined into a single `score`.
+4. **Switch** routes candidates into 3 branches based on `score` thresholds.
+5. **Edit Fields / 1 / 2** each set the `Decision` field to the matching label for their branch.
+6. **Merge** brings all 3 branches back into a single 9-item stream.
+7. **Update row in sheet** writes the `Decision` value into the spreadsheet, matching each row by `Email`.
+8. **Switch1** reads `Decision` again and routes each candidate to the matching Gmail node.
+9. **Send a message / 1 / 2** sends a personalized email — congratulating shortlisted candidates, notifying waitlisted candidates, and politely declining rejected candidates.
+
+---
+
+## Test Cases
+
+| Case | Input | Expected Result |
+|---|---|---|
+| Complete application, high score | PhD, 6 years experience, Immediate | `isValid = true`, high score → **Shortlisted** |
+| Complete application, mid score | Bachelor's, 2 years experience | Mid score → **Waitlisted** |
+| Complete application, low score | Bachelor's, <1 year experience | Low score → **Rejected** |
+| Missing field | Skills or Experience left blank | `isValid = false`, `missingFields` lists the blank field(s) |
+| Duplicate run | Workflow re-executed on an already-processed sheet | Existing `Decision` values are overwritten consistently (idempotent — same input always produces the same output) |
+| Sample dataset (9 rows) | See `sample-data/sample_input.csv` | Produces a mix of all 3 decision categories |
+
+## Error Handling
+
+- **Missing/blank fields**: caught explicitly by the validation Code node rather than allowed to reach the scoring logic; incomplete rows are flagged via `isValid`/`missingFields` instead of crashing the workflow.
+- **Non-numeric or malformed Experience values**: `parseFloat()` combined with a fallback (`|| 0`) ensures a bad value degrades to 0 points rather than throwing an error.
+- **Unmatched rows on sheet update**: the "Update row in sheet" node matches on `Email`, which is expected to be unique per candidate; duplicate emails in the source sheet should be resolved before running.
+- **Email send failures**: n8n's built-in node retry/error-output settings can be enabled on the Gmail nodes to catch and log failed sends without stopping the whole run.
+
+## Known Limitations
+
+- Scoring rules (Degree/Experience point values and thresholds) are static and hardcoded in the Code node — they don't yet pull from a configurable settings sheet.
+- Degree parsing relies on string matching (e.g., "M.S.", "Ph.D.") and may misclassify degree formats not seen in the sample data.
+- The workflow processes the full sheet on each run; there's no built-in check to skip rows that already have a `Decision`, so re-running can re-send emails unless manually filtered.
+- No interview-scheduling step is included — "Shortlisted"/next steps are communicated by email only.
+
+## Future Improvements
+
+- Move scoring weights and thresholds into a config sheet/tab so non-technical users can adjust hiring criteria without editing code.
+- Add a "skip already-processed rows" filter to make repeated runs safe.
+- Add Skills-keyword matching against a job description for a more complete score.
+- Trigger automatically on new row submission (Google Sheets Trigger / Form submission) instead of manual/scheduled runs.
+- Log workflow errors to a dedicated sheet or Slack channel for monitoring.
+
+
 
