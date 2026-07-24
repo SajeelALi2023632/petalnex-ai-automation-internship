@@ -1,0 +1,658 @@
+{
+  "name": "My workflow 6",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1Bwf6yTk9syBkk28ch0kUQ7Zn4RZFm4Tlj7GzeatgPmU/edit?hl=id&gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1Bwf6yTk9syBkk28ch0kUQ7Zn4RZFm4Tlj7GzeatgPmU/edit?hl=id&gid=0#gid=0",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -272,
+        -16
+      ],
+      "id": "0d9dfaa1-08a1-4f79-95a0-d786188054ff",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jhWQANOoXzbhb2jT",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and check that required fields are filled in.\n// Adds 'isValid' (boolean) and 'missingFields' (string, or \"None\" if nothing is missing).\n\nconst requiredFields = ['Name', 'Email', 'Degree', 'Skills', 'Experience', 'Availability'];\n\nfor (const item of $input.all()) {\n  const missing = requiredFields.filter(field => {\n    const value = item.json[field];\n    return value === undefined || value === null || value.toString().trim() === '';\n  });\n\n  item.json.missingFields = missing.length === 0 ? 'None' : missing.join(', ');\n  item.json.isValid = missing.length === 0;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -16
+      ],
+      "id": "a2941e38-66ee-4d55-a4a7-5c7a77a4d073",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Apply screening rules: calculate Degree + Experience points\nconst items = $input.all();\n\nreturn items.map(item => {\n  const json = item.json;\n  const degreeText = (json.Degree || '').toLowerCase();\n  const expYears = parseFloat((json.Experience || '').toString()) || 0;\n\n  // Degree points\n  let degreePoints = 0;\n  if (degreeText.includes('ph.d') || degreeText.includes('phd')) {\n    degreePoints = 3;\n  } else if (degreeText.includes('m.s') || degreeText.includes('m.a') || degreeText.includes('m.b.a') || degreeText.startsWith('m.')) {\n    degreePoints = 2;\n  } else if (degreeText.includes('b.s') || degreeText.includes('b.a')) {\n    degreePoints = 1;\n  }\n\n  // Experience points\n  let expPoints = 0;\n  if (expYears >= 3) {\n    expPoints = 2;\n  } else if (expYears >= 1) {\n    expPoints = 1;\n  }\n\n  const score = degreePoints + expPoints;\n\n  return {\n    json: {\n      ...json,\n      degreePoints,\n      expPoints,\n      score\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        -16
+      ],
+      "id": "4df6bb30-7c93-4cac-b2c9-fde195af12bb",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 4,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "id": "9cf3234a-2547-42a0-a88a-aea3c95ef339"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "08b41483-7315-471d-8641-6189f68d0586",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6b2531f1-8b3d-4dad-a620-250106563804",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        -32
+      ],
+      "id": "c7bcfd91-fc2d-4d33-9492-50f747403c80",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "780c436f-7960-4327-bc2c-513a277b1626",
+              "name": "Decision",
+              "value": "shortlisted",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        -160
+      ],
+      "id": "e2a16a09-e291-4ee3-8ff9-60196a494782",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "780c436f-7960-4327-bc2c-513a277b1626",
+              "name": "Decision",
+              "value": "waitlist",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        32
+      ],
+      "id": "7feab902-83ce-46f0-9997-3237d8f34f9d",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "780c436f-7960-4327-bc2c-513a277b1626",
+              "name": "Decision",
+              "value": "Rejected",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        224
+      ],
+      "id": "0e3c6109-0642-4282-a870-bdee335c9c25",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        768,
+        16
+      ],
+      "id": "49f63adf-d11b-4c29-b3d6-03c95e75c200",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1Bwf6yTk9syBkk28ch0kUQ7Zn4RZFm4Tlj7GzeatgPmU/edit?hl=id&gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1Bwf6yTk9syBkk28ch0kUQ7Zn4RZFm4Tlj7GzeatgPmU/edit?hl=id&gid=0#gid=0",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Decision": "={{ $json.Decision }}",
+            "Email": "={{ $json.Email }}"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Degree",
+              "displayName": "Degree",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Skills",
+              "displayName": "Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Experience",
+              "displayName": "Experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Availability",
+              "displayName": "Availability",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Decision",
+              "displayName": "Decision",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        944,
+        32
+      ],
+      "id": "9571699a-43b2-49df-b6dd-ea1260f25bb1",
+      "name": "Update row in sheet",
+      "notesInFlow": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jhWQANOoXzbhb2jT",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Decision }}",
+                    "rightValue": "shortlisted",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f9317976-5929-4655-85b6-442416f02093"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ef9e6955-0532-4a8a-b36d-692c824bc009",
+                    "leftValue": "={{ $json.Decision }}",
+                    "rightValue": "waitlist",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f64672c0-6b32-4bd9-8cb7-60ac0eae60b9",
+                    "leftValue": "={{ $json.Decision }}",
+                    "rightValue": "Rejected",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        16
+      ],
+      "id": "b281abd7-2691-4101-9f7f-efbfad716257",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "=Congratulations {{ $('Merge').item.json.Name }}— You've Been Shortlisted!",
+        "emailType": "text",
+        "message": "=Hi {{ $('Merge').item.json.Name }}, \nCongratulations! After reviewing your application, we're pleased to let you know that you have been shortlisted for the next stage of our hiring process.  Your qualifications — {{ $('Merge').item.json.Degree }} with {{ $('Merge').item.json.Experience }} of experience — stood out to our team, and we'd like to move forward with you.  Our recruiting team will reach out shortly with details on the next steps.  Best regards, Recruiting Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        -160
+      ],
+      "id": "e2c373ec-b328-41ab-a8cc-6ce82d168ac6",
+      "name": "Send a message",
+      "webhookId": "0b75eef8-60d1-41f4-b89c-af8fa0090bed",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3f1OICnvVYmXgwUA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "=Application Update —{{ $('Merge').item.json.Name }}",
+        "emailType": "text",
+        "message": "=Hi {{ $('Merge').item.json.Name }}, \nThank you for taking the time to apply.\nAfter reviewing your background, we've placed your application on our waitlist for now.\n\nThis means you remain under consideration — if a suitable position opens up that matches your profile  — {{ $('Merge').item.json.Degree }} with {{ $('Merge').item.json.Experience }} we will reach out directly.\n\nWe appreciate your patience and interest in joining our team.\n\nBest regards,\nRecruiting Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        32
+      ],
+      "id": "7ad14b2a-fb80-4c1d-b81b-61f5744020b8",
+      "name": "Send a message1",
+      "webhookId": "0b75eef8-60d1-41f4-b89c-af8fa0090bed",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3f1OICnvVYmXgwUA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "=Application Update —{{ $('Merge').item.json.Name }}",
+        "emailType": "text",
+        "message": "=Hi {{ $('Merge').item.json.Name }}, \nThank you for your interest in joining us and for taking the time to apply.\n\nAfter careful review, we've decided not to move forward with your application at this time. This decision reflects our current hiring needs and does not diminish the value of your background and experience.\n\nWe wish you the very best in your career search and encourage you to apply again in the future.\n\nBest regards,\nRecruiting Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        224
+      ],
+      "id": "0ff5eef4-8439-40dc-85db-ef675018ddd7",
+      "name": "Send a message2",
+      "webhookId": "0b75eef8-60d1-41f4-b89c-af8fa0090bed",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3f1OICnvVYmXgwUA",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "767e16ab-c2ce-49ae-9be4-6aec7044eede",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19b20340ed07e1c6164b16b51f151f17469e202d38987bd410fe8f4fc47ae4b1"
+  },
+  "nodeGroups": [],
+  "id": "pqn1EVtdQyH8jNuw",
+  "tags": []
+}
