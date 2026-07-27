@@ -1,0 +1,60 @@
+{
+  "name": "My workflow 7",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"records\": [\n    { \"name\": \"john SMITH\", \"email\": \"JOHN.smith@Example.com\", \"score\": \"78\" },\n    { \"name\": \"maria Garcia\", \"email\": \"maria.garcia@EXAMPLE.com\", \"score\": 92 },\n    { \"name\": \"DAVID lee\", \"email\": \"David.Lee@example.COM\", \"score\": \"65\" },\n    { \"name\": \"priya Patel\", \"email\": \"priya.patel@Example.com\", \"score\": 88 },\n    { \"name\": \"ahmed HASSAN\", \"email\": \"Ahmed.Hassan@example.com\", \"score\": \"45\" },\n    { \"name\": \"linda chen\", \"email\": \"LINDA.CHEN@example.com\", \"score\": 71 },\n    { \"name\": \"MICHAEL brown\", \"email\": \"michael.brown@Example.COM\", \"score\": \"99\" },\n    { \"name\": \"sara Kim\", \"email\": \"Sara.KIM@example.com\", \"score\": 58 },\n    { \"name\": \"carlos RUIZ\", \"email\": \"carlos.ruiz@EXAMPLE.COM\", \"score\": \"83\" },\n    { \"name\": \"emma Wilson\", \"email\": \"EMMA.wilson@example.com\", \"score\": 67 },\n    { \"name\": \"yusuf IBRAHIM\", \"email\": \"yusuf.ibrahim@Example.com\", \"score\": \"34\" },\n    { \"name\": \"olga PETROVA\", \"email\": \"olga.petrova@EXAMPLE.com\", \"score\": 95 },\n    { \"name\": \"raj Sharma\", \"email\": \"Raj.Sharma@example.COM\", \"score\": \"61\" },\n    { \"name\": \"amina YUSUF\", \"email\": \"amina.yusuf@Example.com\", \"score\": 79 },\n    { \"name\": \"tom ANDERSON\", \"email\": \"tom.anderson@EXAMPLE.COM\", \"score\": \"50\" }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -304,
+        0
+      ],
+      "id": "934d9938-288a-403d-ba7d-40075c2bb5f0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// The upstream node gives us ONE item: { records: [ {...}, {...}, ... ] }\nconst records = items[0].json.records;\n\nconst transformed = records.map(data => {\n  const normalizedName = data.name\n    .trim()\n    .toLowerCase()\n    .split(' ')\n    .map(word => word.charAt(0).toUpperCase() + word.slice(1))\n    .join(' ');\n\n  const normalizedEmail = data.email.trim().toLowerCase();\n  const numericScore = Number(data.score);\n\n  let grade;\n  if (numericScore >= 90) grade = 'A';\n  else if (numericScore >= 80) grade = 'B';\n  else if (numericScore >= 70) grade = 'C';\n  else if (numericScore >= 60) grade = 'D';\n  else grade = 'F';\n\n  return {\n    json: { name: normalizedName, email: normalizedEmail, score: numericScore, grade }\n  };\n});\n\nconst topPerformers = transformed.filter(item =>\n  item.json.grade === 'A' || item.json.grade === 'B'\n);\n\nreturn topPerformers;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        0
+      ],
+      "id": "fb03029a-662d-4d1d-a504-50c3c73c415d",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "15c27955-b35a-4490-b230-c2a8481ad27b",
+  "meta": {
+    "instanceId": "19b20340ed07e1c6164b16b51f151f17469e202d38987bd410fe8f4fc47ae4b1"
+  },
+  "nodeGroups": [],
+  "id": "xSKQo2bMq9mTVdcz",
+  "tags": []
+}
