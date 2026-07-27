@@ -1,1 +1,160 @@
+# Day 10 — Webhooks: Event-Driven Workflows
 
+## Objective
+Trigger workflows the moment something happens elsewhere, instead of polling on a schedule.
+
+## Practical Task
+Build a form-submission intake:
+```
+Website/Form → n8n Webhook → Validate Submitted Information → Save Data → Send Confirmation
+```
+
+## Workflow (day10-workflow.json)
+
+```
+Webhook (POST /form-submission)
+   ↓
+Validate Submitted Information (Code node)
+   ↓
+Is Valid? (IF node)
+   ├─ true  → Save Data (Code node) → Respond - Success (200)
+   └─ false → Respond - Error (400)
+```
+
+### Nodes explained
+| Node | Purpose |
+|---|---|
+| **Webhook - Form Intake** | POST endpoint at path `/form-submission`. `responseMode: responseNode` means the actual HTTP response is sent later by a Respond to Webhook node — this lets us validate first and return the right status code. |
+| **Validate Submitted Information** | Checks `name`, `email`, `message` are present, and validates email format with a regex. Returns `isValid` + `errors[]`. |
+| **Is Valid?** | Routes to Save Data (true) or straight to an error response (false). |
+| **Save Data** | Simulates persisting the record (adds an `id` + `savedAt` timestamp). In a real workflow, swap this for a Google Sheets / Airtable / Postgres node. |
+| **Respond - Success** | Returns `200` with the saved record and a confirmation message. |
+| **Respond - Error** | Returns `400` with the specific validation errors. |
+
+## How to import
+1. In n8n: **Workflows → Import from File** → select `day10-workflow.json`.
+2. Open the **Webhook - Form Intake** node and click **"Listen for Test Event"** (or activate the workflow to use the Production URL).
+3. Copy the **Test URL** (or Production URL once activated) shown in the node.
+
+---
+
+## Sample POST Requests (Postman)
+
+### 1. Valid submission
+**Method:** `POST`
+**URL:** `{{your-webhook-url}}/webhook-test/form-submission` (test) or `{{your-webhook-url}}/webhook/form-submission` (production)
+**Headers:** `Content-Type: application/json`
+**Body (raw JSON):**
+```json
+{
+  "name": "Ayesha Khan",
+  "email": "ayesha.khan@example.com",
+  "message": "Hi, I'd like to know more about your internship program.",
+  "phone": "+92-300-1234567"
+}
+```
+**Expected response (200):**
+```json
+{
+  "status": "success",
+  "message": "Form submitted successfully",
+  "recordId": "sub_1753612345678_482",
+  "data": {
+    "id": "sub_1753612345678_482",
+    "name": "Ayesha Khan",
+    "email": "ayesha.khan@example.com",
+    "message": "Hi, I'd like to know more about your internship program.",
+    "phone": "+92-300-1234567",
+    "submittedAt": "2026-07-27T09:15:00.000Z",
+    "savedAt": "2026-07-27T09:15:00.050Z"
+  }
+}
+```
+
+### 2. Invalid submission (missing fields + bad email)
+**Body (raw JSON):**
+```json
+{
+  "name": "",
+  "email": "not-an-email",
+  "message": ""
+}
+```
+**Expected response (400):**
+```json
+{
+  "status": "error",
+  "message": "Validation failed",
+  "errors": [
+    "name is required",
+    "email is not a valid format",
+    "message is required"
+  ]
+}
+```
+
+---
+
+## Testing steps
+1. Open Postman → new request → set method to `POST` → paste your Webhook Test URL.
+2. Go to **Body → raw → JSON**, paste the **valid** sample above → Send. Confirm you get `200` and a `recordId`.
+3. Replace the body with the **invalid** sample → Send. Confirm you get `400` with the `errors` array.
+4. Take a screenshot showing:
+   - The Postman request + response (valid case, 200 + confirmation), and
+   - The n8n execution log / "Save Data" node output showing the saved record.
+
+## Screenshots
+
+### 1. Postman — Valid request → 200 success
+```
+[Paste screenshot here]
+```
+Request body used:
+```json
+{
+  "name": "Ayesha Khan",
+  "email": "ayesha.khan@example.com",
+  "message": "Hi, I'd like to know more about your internship program.",
+  "phone": "+92-300-1234567"
+}
+```
+
+### 2. Postman — Invalid request → 400 error
+```
+[Paste screenshot here]
+```
+Request body used:
+```json
+{
+  "name": "",
+  "email": "not-an-email",
+  "message": ""
+}
+```
+
+### 3. n8n — Save Data node output (saved record)
+```
+[Paste screenshot here]
+```
+Shows the record with generated `id`, `name`, `email`, `message`, `submittedAt`, and `savedAt`.
+
+### 4. n8n — Full workflow execution (all nodes green)
+```
+[Paste screenshot here]
+```
+Shows Webhook → Validate Submitted Information → Is Valid? → Save Data → Respond - Success, all executed successfully in one run.
+
+### 5. Workflow JSON exported
+```
+[Paste screenshot here]
+```
+Confirms `day10-workflow.json` was downloaded via the ⋯ menu → Download.
+
+---
+
+## Basic webhook security note (per Day 10 "Learn" objectives)
+For production use, add one of:
+- **Secret path**: make the path itself hard to guess (e.g. `/form-submission-8f3ac21`), or
+- **Header check**: add an IF node right after the Webhook node checking `{{$json.headers['x-api-key']}} === "your-secret"`, rejecting with a 401 Respond node if it doesn't match.
+
+This workflow currently relies on path obscurity only — for a graded submission, mentioning this as a "next improvement" is a good note to add to your report.
