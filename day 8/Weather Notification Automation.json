@@ -1,0 +1,218 @@
+{
+  "name": "Weather Notification Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "0ad4b5f8-cf98-406b-aeae-f65c5a9f07c2",
+      "name": "Every Morning 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.weatherapi.com/v1/forecast.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "Gilgit"
+            },
+            {
+              "name": "days",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "656176bf-428b-46b6-a476-18fec7c41887",
+      "name": "Weather API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "CYgKqOqwhNp8RTn2",
+          "name": "Query Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "location",
+              "value": "={{ $json.location.name }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "will_it_rain",
+              "value": "={{ $json.forecast.forecastday[0].day.daily_will_it_rain }}",
+              "type": "number"
+            },
+            {
+              "id": "a3",
+              "name": "chance_of_rain",
+              "value": "={{ $json.forecast.forecastday[0].day.daily_chance_of_rain }}",
+              "type": "number"
+            },
+            {
+              "id": "a4",
+              "name": "condition",
+              "value": "={{ $json.forecast.forecastday[0].day.condition.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4f98908e-d624-43a4-92ad-0747291c255a",
+      "name": "Extract Required Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "rain-check",
+              "leftValue": "={{ $json.will_it_rain }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d7001e9a-6378-4b37-807e-267f0af2b79f",
+      "name": "Will It Rain?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "sajeelali307@gmail.com",
+        "subject": "=Weather Alert for {{ $json.location }} - Rain Expected Today",
+        "emailType": "text",
+        "message": "=Rain is expected today in {{ $json.location }} ({{ $json.chance_of_rain }}% chance, {{ $json.condition }}) - please carry an umbrella.",
+        "options": {}
+      },
+      "id": "f6f4035b-68f0-4419-96f9-e0117da615d6",
+      "name": "Send Rain Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        -64
+      ],
+      "webhookId": "d8653558-b387-4b71-9bb8-3301050ecd38",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3f1OICnvVYmXgwUA",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every Morning 9AM": {
+      "main": [
+        [
+          {
+            "node": "Weather API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weather API": {
+      "main": [
+        [
+          {
+            "node": "Extract Required Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Required Data": {
+      "main": [
+        [
+          {
+            "node": "Will It Rain?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Will It Rain?": {
+      "main": [
+        [
+          {
+            "node": "Send Rain Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0ebe105c-8d61-4a33-b3d8-7b5aa9a5f95c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19b20340ed07e1c6164b16b51f151f17469e202d38987bd410fe8f4fc47ae4b1"
+  },
+  "nodeGroups": [],
+  "id": "XxDCo6Fw8MWXaT5p",
+  "tags": []
+}
