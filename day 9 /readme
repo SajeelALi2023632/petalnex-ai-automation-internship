@@ -1,1 +1,33 @@
+const items = $input.all();
 
+// The upstream node gives us ONE item: { records: [ {...}, {...}, ... ] }
+const records = items[0].json.records;
+
+const transformed = records.map(data => {
+  const normalizedName = data.name
+    .trim()
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+  const normalizedEmail = data.email.trim().toLowerCase();
+  const numericScore = Number(data.score);
+
+  let grade;
+  if (numericScore >= 90) grade = 'A';
+  else if (numericScore >= 80) grade = 'B';
+  else if (numericScore >= 70) grade = 'C';
+  else if (numericScore >= 60) grade = 'D';
+  else grade = 'F';
+
+  return {
+    json: { name: normalizedName, email: normalizedEmail, score: numericScore, grade }
+  };
+});
+
+const topPerformers = transformed.filter(item =>
+  item.json.grade === 'A' || item.json.grade === 'B'
+);
+
+return topPerformers;
