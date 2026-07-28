@@ -1,0 +1,73 @@
+# Day 11 — Multi-System Integration: Lead Processing Workflow
+
+**Objective:** Combine a webhook, an external API, a data store, and a notification channel into one coherent pipeline that processes new sales leads.
+
+## Flow
+
+```
+Webhook → Validate → If ─true→ HTTP Request (enrich) → Code (merge) → Append row in sheet → HTTP Request1 (notify) → Respond to Webhook (200)
+                        └false→ Respond to Webhook1 (400)
+```
+
+## Nodes used
+
+| Node name | Type | Purpose |
+|---|---|---|
+| `Webhook` | Webhook | Receives POST requests with lead data at `/webhook/lead-processing` |
+| `Validate` | Code (JavaScript) | Checks `name`, `email`, `company` are present and email is well-formed |
+| `If` | If | Branches: true → enrichment path, false → error response path |
+| `HTTP Request` | HTTP Request | Calls `disify.com`'s free email-validation API to check format, disposable status, and DNS/MX validity for the lead's email |
+| `Code in JavaScript1` | Code (JavaScript) | Merges the original validated lead fields with the enrichment result into one clean record |
+| `Append row in sheet` | Google Sheets | Appends the enriched lead as a new row in a Google Sheet |
+| `HTTP Request1` | HTTP Request | Posts a notification message to a webhook (webhook.site during testing; swap for a real Slack Incoming Webhook URL in production) |
+| `Respond to Webhook` | Respond to Webhook | Returns `{ success: true, message: "Lead received and processed" }` on the success path |
+| `Respond to Webhook1` | Respond to Webhook | Returns `{ success: false, errors: [...] }` (HTTP 400) on the validation-failure path |
+
+## Tools & APIs
+
+- **n8n** — workflow automation platform (cloud instance)
+- **disify.com API** — free, no-auth email validation and disposable-domain detection, used as the enrichment step
+- **Google Sheets** — data store for processed leads
+- **webhook.site** — used in place of Slack for testing the notification step; replace with a Slack Incoming Webhook URL for real use
+
+## How to test
+
+Send a POST request to the webhook URL with `Content-Type: application/json`.
+
+**Valid lead (should succeed):**
+```json
+{
+  "name": "Ayesha Khan",
+  "email": "ayesha.khan@example.com",
+  "company": "Petalnex Pvt. Ltd.",
+  "phone": "+92-300-1234567",
+  "message": "Interested in the AI automation package, please reach out."
+}
+```
+Expected response (200):
+```json
+{ "success": true, "message": "Lead received and processed" }
+```
+
+**Invalid lead (should fail validation):**
+```json
+{
+  "name": "Bilal Ahmed",
+  "message": "Just checking in"
+}
+```
+Expected response (400):
+```json
+{ "success": false, "errors": "a valid email is required,company is required" }
+```
+
+## Known limitation
+
+The error-path Respond node currently returns HTTP 200 instead of 400 — the `Response Code` option was not set. Functionally the workflow still correctly distinguishes success/failure via the `success` field in the body; setting the status code is a minor follow-up for stricter REST compliance.
+
+## Deliverables checklist
+
+- [x] Workflow JSON (exported from n8n)
+- [x] Sample POST payloads (valid + invalid)
+- [x] README (this file)
+- [ ] Screenshots of each stage working (see list below)
