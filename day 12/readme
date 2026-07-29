@@ -1,0 +1,146 @@
+# Automated Lead Management System
+
+An n8n workflow that accepts incoming leads via webhook, validates and cleans the data, scores each lead by priority, routes it to the appropriate destination, and sends an acknowledgment email.
+
+## Objective
+
+Deliver a complete, scored, routed lead-management automation that accepts leads with the following fields: `name`, `email`, `company`, `service`, `budget`.
+
+## Architecture
+
+```
+Webhook → Validation → Lead Processing → Lead Scoring → Switch → Route
+```
+
+- **High Priority** → immediate sales notification (Gmail)
+- **Medium Priority** → saved to Google Sheets ("Medium Priority Leads" tab)
+- **Low Priority** → saved to Google Sheets ("Low Priority - Nurture List" tab)
+- **Finally** → automatic acknowledgment email sent to the lead
+
+## Workflow Nodes
+
+### 1. Webhook
+- Method: `POST`
+- Accepts JSON body with lead fields
+- Response mode: "Using Respond to Webhook node" (response is controlled downstream)
+
+### 2. Validation (Code node)
+Checks that all required fields are present and well-formed before any processing happens:
+- Required fields: `name`, `email`, `company`, `service`, `budget`
+- Email must match a valid format (`user@domain.tld`)
+- Budget must be a valid, non-negative number
+- Name must be at least 2 characters
+
+Invalid submissions are routed to a `Respond to Webhook` node returning HTTP `400` with a list of validation errors. Valid submissions continue to Lead Processing.
+
+### 3. Lead Processing (Code node)
+Cleans and normalizes the data before scoring:
+- Strips currency symbols/commas from `budget` and converts to a number
+- Trims whitespace from text fields; lowercases email
+- Extracts email domain and flags whether it's a free provider (Gmail, Yahoo, Hotmail, Outlook, iCloud) vs. a business domain
+- Generates a unique `leadId` and a `receivedAt` timestamp
+
+### 4. Lead Scoring (Code node)
+Applies a point-based rubric to compute a `score`, then maps that score to a `priority` tier.
+
+| Factor | Points |
+|---|---|
+| Budget > $10,000 | +30 |
+| Budget $2,000–$10,000 | +15 |
+| Budget < $2,000 | +5 |
+| High-value service (Enterprise / Premium / Custom) | +20 |
+| Company field provided | +10 |
+| Business email domain (not a free provider) | +10 |
+
+| Score | Priority |
+|---|---|
+| ≥ 50 | High |
+| 25–49 | Medium |
+| < 25 | Low |
+
+### 5. Switch (routing)
+Routes on the `priority` field to one of three outputs: High, Medium, Low.
+
+### 6. Destination branches
+- **High** → Gmail node sends an internal notification to the sales team with full lead details
+- **Medium** → Google Sheets node appends a row to the "Medium Priority Leads" tab
+- **Low** → Google Sheets node appends a row to the "Low Priority - Nurture List" tab
+
+### 7. Acknowledgment email
+All three branches merge back together, then a Gmail/Email node sends a short confirmation email to the lead's own address, followed by a `Respond to Webhook` node returning a success JSON response.
+
+## Google Sheet Structure
+
+Two tabs, same column structure:
+
+| Column | Source Field |
+|---|---|
+| Lead ID | `leadId` |
+| Name | `name` |
+| Email | `email` |
+| Company | `company` |
+| Service Requested | `service` |
+| Budget | `budget` |
+| Score | `score` |
+| Priority | `priority` |
+| Business Email? | `isBusinessEmail` |
+| Received At | `receivedAt` |
+| Status | *(manual — updated by sales/marketing team)* |
+
+## Setup / Credentials Required
+
+- **Google account (OAuth2)** connected in n8n for both the Gmail node and Google Sheets node
+- **Google Sheet** created in advance with the two tabs above and matching header rows
+- **n8n instance** (cloud or self-hosted) with the workflow imported
+
+## Sample API Request
+
+```json
+POST /webhook/new-lead
+Content-Type: application/json
+
+{
+  "name": "Sarah Chen",
+  "email": "sarah.chen@acmecorp.com",
+  "company": "Acme Corporation",
+  "service": "Enterprise Automation Package",
+  "budget": 25000
+}
+```
+
+Expected response:
+```json
+{
+  "status": "received",
+  "priority": "High"
+}
+```
+
+## Error Response Example
+
+```json
+POST /webhook/new-lead
+Content-Type: application/json
+
+{
+  "name": "Alex Kim",
+  "email": "alex.kim@test.com",
+  "company": "Test Co",
+  "budget": 3000
+}
+```
+
+Response (HTTP 400):
+```json
+{
+  "status": "error",
+  "message": "Validation failed",
+  "errors": ["Missing required field: service"]
+}
+```
+
+## Notes / Design Decisions
+
+- Scoring thresholds were chosen as a starting rubric and can be tuned based on real sales data over time.
+- Free email providers (Gmail, Yahoo, etc.) score lower than business domains as a simple proxy for lead legitimacy — not a hard rule, just a weighted signal.
+- The "Status" column in Google Sheets is intentionally left blank for manual follow-up tracking by the sales/marketing team.
