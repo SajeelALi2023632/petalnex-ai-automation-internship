@@ -1,0 +1,432 @@
+{
+  "name": "My workflow 10",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new lead",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        16
+      ],
+      "id": "09958136-4f57-420d-a155-3a552a7a4f8f",
+      "name": "Webhook",
+      "webhookId": "98e48853-e02d-4d09-8f47-bd8d0f22080d"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validation Node — n8n Code node\n// Mode: Run Once for Each Item\n\nconst item = $input.item.json.body;\nconst errors = [];\n\n// Required fields\nconst requiredFields = ['name', 'email', 'company', 'service', 'budget'];\nfor (const field of requiredFields) {\n  if (\n    item[field] === undefined ||\n    item[field] === null ||\n    String(item[field]).trim() === ''\n  ) {\n    errors.push(`Missing required field: ${field}`);\n  }\n}\n\n// Email format check (basic, not exhaustive)\nif (item.email) {\n  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  if (!emailRegex.test(item.email.trim())) {\n    errors.push('Invalid email format');\n  }\n}\n\n// Budget must be a valid positive number\nif (item.budget !== undefined && item.budget !== null && item.budget !== '') {\n  const budgetNum = Number(item.budget);\n  if (isNaN(budgetNum) || budgetNum < 0) {\n    errors.push('Budget must be a valid positive number');\n  }\n}\n\n// Name should not be suspiciously short (basic sanity check)\nif (item.name && item.name.trim().length < 2) {\n  errors.push('Name is too short');\n}\n\nreturn {\n  json: {\n    ...item,\n    isValid: errors.length === 0,\n    validationErrors: errors\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        16
+      ],
+      "id": "44730823-46fa-4e86-bc55-eac1fa2a1bcb",
+      "name": "Validation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lead Processing Node — n8n Code node\n// Mode: Run Once for All Items\n\nconst items = $input.all();\nconst freeEmailProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com'];\n\nconst results = items.map(entry => {\n  const item = entry.json;\n\n  let cleanBudget = item.budget;\n  if (typeof cleanBudget === 'string') {\n    cleanBudget = cleanBudget.replace(/[$,\\s]/g, '');\n  }\n  cleanBudget = Number(cleanBudget) || 0;\n\n  const cleanName = String(item.name || '').trim();\n  const cleanEmail = String(item.email || '').trim().toLowerCase();\n  const cleanCompany = String(item.company || '').trim();\n  const cleanService = String(item.service || '').trim();\n\n  const emailDomain = cleanEmail.includes('@') ? cleanEmail.split('@')[1] : '';\n  const isBusinessEmail = emailDomain && !freeEmailProviders.includes(emailDomain);\n\n  const leadId = `LEAD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;\n  const receivedAt = new Date().toISOString();\n\n  return {\n    json: {\n      leadId,\n      name: cleanName,\n      email: cleanEmail,\n      emailDomain,\n      isBusinessEmail,\n      company: cleanCompany,\n      hasCompany: cleanCompany.length > 0,\n      service: cleanService,\n      budget: cleanBudget,\n      receivedAt\n    }\n  };\n});\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        16
+      ],
+      "id": "ac390cf7-6cbd-4322-923f-3ad7f24e5ea8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lead Scoring Node — n8n Code node\n// Mode: Run Once for Each Item\n\nconst item = $input.item.json;\nlet score = 0;\n\n// --- Budget scoring ---\nif (item.budget > 10000) {\n  score += 30;\n} else if (item.budget >= 2000) {\n  score += 15;\n} else {\n  score += 5;\n}\n\n// --- Service type scoring ---\nconst highValueServices = ['enterprise', 'premium', 'custom'];\nconst serviceLower = (item.service || '').toLowerCase();\nconst isHighValueService = highValueServices.some(keyword => serviceLower.includes(keyword));\nif (isHighValueService) {\n  score += 20;\n}\n\n// --- Company provided ---\nif (item.hasCompany) {\n  score += 10;\n}\n\n// --- Business email (not gmail/yahoo/etc.) ---\nif (item.isBusinessEmail) {\n  score += 10;\n}\n\n// --- Determine priority tier ---\nlet priority;\nif (score >= 50) {\n  priority = 'High';\n} else if (score >= 25) {\n  priority = 'Medium';\n} else {\n  priority = 'Low';\n}\n\nreturn {\n  json: {\n    ...item,\n    score,\n    priority\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        16
+      ],
+      "id": "0f2a6a2c-0cb3-4d0c-9473-6bb339d0a3de",
+      "name": "lead scoring"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "High",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "461d9033-55bf-4400-a4ba-cdf555155e48"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "18c7371b-2489-489f-8a81-809d4f939511",
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "Medium",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7cf30e64-f8d4-4b85-a79e-9d9f42f8b208",
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "Low",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        16
+      ],
+      "id": "aae3f70f-d1bd-4793-8d88-7eaa41f688f2",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "Congratulation ",
+        "message": "you have been selected",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        -176
+      ],
+      "id": "acb30fbf-0be4-4483-88cb-8a9ea83680c5",
+      "name": "Send a message",
+      "webhookId": "249b11e2-fa08-4a3d-ae33-6b9fdd20c514",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "3f1OICnvVYmXgwUA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1Ur_UatSmx6Td-ZeLcuVcPdEq9xXWkIH8E4rMOiVfic0/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1Ur_UatSmx6Td-ZeLcuVcPdEq9xXWkIH8E4rMOiVfic0/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        608,
+        16
+      ],
+      "id": "51c01009-05a4-4798-b003-55b7af7d5869",
+      "name": "Medium priority",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jhWQANOoXzbhb2jT",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1zbUcHpQ-1kKl42IApf3q7rwVJFoL798ZNTJXbZRzcrk/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1zbUcHpQ-1kKl42IApf3q7rwVJFoL798ZNTJXbZRzcrk/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Lead ID",
+              "displayName": "Lead ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Service Requested",
+              "displayName": "Service Requested",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Business Email?",
+              "displayName": "Business Email?",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Received At",
+              "displayName": "Received At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        608,
+        224
+      ],
+      "id": "34ff91d2-8ae4-484d-a0b9-ac11050ce19d",
+      "name": "low priority",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "jhWQANOoXzbhb2jT",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "lead scoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "lead scoring": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Medium priority",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "low priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "low priority": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6017465a-0bf0-4717-9a5f-f792dbd705e0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19b20340ed07e1c6164b16b51f151f17469e202d38987bd410fe8f4fc47ae4b1"
+  },
+  "nodeGroups": [],
+  "id": "uIwbHtYF0CpwXrzE",
+  "tags": []
+}
