@@ -1,47 +1,80 @@
-# Automated Lead Management System
+# Project Name
 
-An n8n workflow that accepts incoming leads via webhook, validates and cleans the data, scores each lead by priority, routes it to the appropriate destination, and sends an acknowledgment email.
+Automated Lead Management System
+
+## Problem Statement
+
+Businesses receive incoming leads through forms, landing pages, or sales inquiries, but manually reading, evaluating, and routing every submission wastes time and delays follow-up on the leads most likely to convert. High-value leads can sit unnoticed in a shared inbox for hours while lower-value inquiries get the same attention as urgent ones. There's no consistent, repeatable way to prioritize leads the moment they arrive.
 
 ## Objective
 
-Deliver a complete, scored, routed lead-management automation that accepts leads with the following fields: `name`, `email`, `company`, `service`, `budget`.
+Deliver a complete, scored, routed lead-management automation that accepts a lead submission (`name`, `email`, `company`, `service`, `budget`), validates it, scores it by priority, routes it to the correct destination, and confirms receipt to the lead automatically — with no manual triage required.
 
-## Architecture
+## Workflow Architecture
 
 ```
 Webhook → Validation → Lead Processing → Lead Scoring → Switch → Route
 ```
 
-- **High Priority** → immediate sales notification (Gmail)
-- **Medium Priority** → saved to Google Sheets ("Medium Priority Leads" tab)
-- **Low Priority** → saved to Google Sheets ("Low Priority - Nurture List" tab)
-- **Finally** → automatic acknowledgment email sent to the lead
+Routing outcomes:
+- **High Priority** → immediate internal sales notification (email)
+- **Medium Priority** → appended to Google Sheets ("Medium Priority Leads" tab)
+- **Low Priority** → appended to Google Sheets ("Low Priority - Nurture List" tab)
+- **All branches** → merge back → automatic acknowledgment email sent to the lead → success response returned
 
-## Workflow Nodes
+## Technologies Used
 
-### 1. Webhook
-- Method: `POST`
-- Accepts JSON body with lead fields
-- Response mode: "Using Respond to Webhook node" (response is controlled downstream)
+- **n8n** — workflow automation / orchestration
+- **JavaScript** — custom Code nodes for validation, data cleaning, and scoring logic
+- **Google Sheets API** — persistent storage for Medium/Low priority leads
+- **Gmail API** — internal sales notifications and lead acknowledgment emails
+- **Webhook (HTTP)** — external trigger / entry point for lead submissions
+- **Postman** — manual testing of the webhook endpoint
 
-### 2. Validation (Code node)
-Checks that all required fields are present and well-formed before any processing happens:
-- Required fields: `name`, `email`, `company`, `service`, `budget`
-- Email must match a valid format (`user@domain.tld`)
-- Budget must be a valid, non-negative number
-- Name must be at least 2 characters
+## Nodes Used
 
-Invalid submissions are routed to a `Respond to Webhook` node returning HTTP `400` with a list of validation errors. Valid submissions continue to Lead Processing.
+| Node | Type | Purpose |
+|---|---|---|
+| Webhook | Trigger | Receives incoming POST requests with lead data |
+| Validation | Code (JavaScript) | Checks required fields, email format, budget validity |
+| IF | Logic | Branches valid vs. invalid submissions |
+| Respond to Webhook (error) | Response | Returns HTTP 400 with validation errors |
+| Lead Processing | Code (JavaScript) | Cleans/normalizes data, derives extra fields, generates ID/timestamp |
+| Lead Scoring | Code (JavaScript) | Applies point-based rubric, assigns priority tier |
+| Switch | Logic | Routes item based on `priority` field |
+| Gmail (High) | Action | Sends internal sales notification |
+| Google Sheets (Medium) | Action | Appends row to Medium tab |
+| Google Sheets (Low) | Action | Appends row to Low/Nurture tab |
+| Merge | Logic | Rejoins the three branches into one path |
+| Gmail (Acknowledgment) | Action | Sends confirmation email to the lead |
+| Respond to Webhook (success) | Response | Returns success JSON to the caller |
 
-### 3. Lead Processing (Code node)
-Cleans and normalizes the data before scoring:
-- Strips currency symbols/commas from `budget` and converts to a number
-- Trims whitespace from text fields; lowercases email
-- Extracts email domain and flags whether it's a free provider (Gmail, Yahoo, Hotmail, Outlook, iCloud) vs. a business domain
-- Generates a unique `leadId` and a `receivedAt` timestamp
+## Setup Instructions
 
-### 4. Lead Scoring (Code node)
-Applies a point-based rubric to compute a `score`, then maps that score to a `priority` tier.
+1. Import the workflow JSON into your n8n instance (cloud or self-hosted).
+2. Open the **Webhook** node and copy its production URL — this is your API endpoint.
+3. Connect required credentials (see below) under each Gmail and Google Sheets node.
+4. Create a Google Sheet with two tabs — "Medium Priority Leads" and "Low Priority - Nurture List" — using the column headers listed in this README.
+5. Update the Gmail (High) node's "To" field with your actual sales team address.
+6. Activate the workflow.
+7. Test using the requests in `sample-api-requests.md`, sent via Postman as `POST` requests with `Content-Type: application/json`.
+
+## Credentials Required
+
+*(names only — no values are stored in this file or the workflow export)*
+
+- Google account OAuth2 credential (used by both Gmail nodes and both Google Sheets nodes)
+
+## Workflow Explanation
+
+- **Validation** rejects incomplete or malformed submissions before any processing occurs, protecting downstream nodes from bad data and returning a clear error to the caller.
+- **Lead Processing** normalizes text fields, strips currency symbols from `budget` so it can be treated as a number, flags whether the email is from a free provider or a business domain, and generates a unique lead ID and timestamp.
+- **Lead Scoring** applies a weighted rubric (budget size, service type, company presence, email domain) to produce a numeric score, then maps that score to a High/Medium/Low tier.
+- **Switch** routes strictly on the `priority` string, sending each tier down a different path.
+- **Destination branches** either notify the sales team immediately (High) or log the lead into the appropriate Google Sheet tab for later follow-up (Medium/Low).
+- **Merge + acknowledgment** ensures every lead — regardless of priority — receives a confirmation email, and the original API caller gets a success response.
+
+## Scoring Rubric
 
 | Factor | Points |
 |---|---|
@@ -50,7 +83,7 @@ Applies a point-based rubric to compute a `score`, then maps that score to a `pr
 | Budget < $2,000 | +5 |
 | High-value service (Enterprise / Premium / Custom) | +20 |
 | Company field provided | +10 |
-| Business email domain (not a free provider) | +10 |
+| Business email domain (not Gmail/Yahoo/Hotmail/Outlook/iCloud) | +10 |
 
 | Score | Priority |
 |---|---|
@@ -58,89 +91,40 @@ Applies a point-based rubric to compute a `score`, then maps that score to a `pr
 | 25–49 | Medium |
 | < 25 | Low |
 
-### 5. Switch (routing)
-Routes on the `priority` field to one of three outputs: High, Medium, Low.
+## Test Cases
 
-### 6. Destination branches
-- **High** → Gmail node sends an internal notification to the sales team with full lead details
-- **Medium** → Google Sheets node appends a row to the "Medium Priority Leads" tab
-- **Low** → Google Sheets node appends a row to the "Low Priority - Nurture List" tab
+See `sample-api-requests.md` for full request/response pairs. Summary of coverage:
 
-### 7. Acknowledgment email
-All three branches merge back together, then a Gmail/Email node sends a short confirmation email to the lead's own address, followed by a `Respond to Webhook` node returning a success JSON response.
+| # | Case | Expected Outcome |
+|---|---|---|
+| 1 | Full valid data, high budget + enterprise service | Routes High, Gmail notification sent |
+| 2 | Full valid data, moderate budget | Routes Medium, row added to sheet |
+| 3 | Full valid data, low budget, free email | Routes Low, row added to nurture sheet |
+| 4 | Missing required field (`service`) | HTTP 400, validation error returned |
+| 5 | Malformed email address | HTTP 400, validation error returned |
+| 6 | Budget submitted with currency symbols (`"$10,000"`) | Cleaned to numeric value, scored correctly |
+| 7 | Budget exactly at High threshold boundary | Confirms threshold behaves as intended |
+| 8 | Empty payload | HTTP 400, all required-field errors returned |
 
-## Google Sheet Structure
+## Error Handling
 
-Two tabs, same column structure:
+- All required fields are checked before any processing; missing fields return a `400` response listing every missing field, not just the first one found.
+- Email format is validated with a regex check; malformed addresses are rejected rather than silently passed through.
+- Budget values are sanitized (stripped of `$`, commas, and whitespace) before being converted to a number, so common real-world formatting doesn't break scoring.
+- If budget cannot be converted to a valid non-negative number, the submission is rejected rather than silently defaulting to zero.
 
-| Column | Source Field |
-|---|---|
-| Lead ID | `leadId` |
-| Name | `name` |
-| Email | `email` |
-| Company | `company` |
-| Service Requested | `service` |
-| Budget | `budget` |
-| Score | `score` |
-| Priority | `priority` |
-| Business Email? | `isBusinessEmail` |
-| Received At | `receivedAt` |
-| Status | *(manual — updated by sales/marketing team)* |
+## Known Limitations
 
-## Setup / Credentials Required
+- The workflow processes one lead per request; it does not currently support batch/array submissions.
+- Scoring rubric weights are a starting point based on assumptions about lead value and have not been validated against real conversion data.
+- Email domain matching against "free provider" list is a fixed, hardcoded list — new or regional free providers won't be caught.
+- No deduplication logic exists yet; the same lead submitted twice will be processed and logged twice.
+- No retry/failure handling if the Gmail or Google Sheets API call fails mid-execution.
 
-- **Google account (OAuth2)** connected in n8n for both the Gmail node and Google Sheets node
-- **Google Sheet** created in advance with the two tabs above and matching header rows
-- **n8n instance** (cloud or self-hosted) with the workflow imported
+## Future Improvements
 
-## Sample API Request
-
-```json
-POST /webhook/new-lead
-Content-Type: application/json
-
-{
-  "name": "Sarah Chen",
-  "email": "sarah.chen@acmecorp.com",
-  "company": "Acme Corporation",
-  "service": "Enterprise Automation Package",
-  "budget": 25000
-}
-```
-
-Expected response:
-```json
-{
-  "status": "received",
-  "priority": "High"
-}
-```
-
-## Error Response Example
-
-```json
-POST /webhook/new-lead
-Content-Type: application/json
-
-{
-  "name": "Alex Kim",
-  "email": "alex.kim@test.com",
-  "company": "Test Co",
-  "budget": 3000
-}
-```
-
-Response (HTTP 400):
-```json
-{
-  "status": "error",
-  "message": "Validation failed",
-  "errors": ["Missing required field: service"]
-}
-```
-
-## Notes / Design Decisions
-
-- Scoring thresholds were chosen as a starting rubric and can be tuned based on real sales data over time.
-- Free email providers (Gmail, Yahoo, etc.) score lower than business domains as a simple proxy for lead legitimacy — not a hard rule, just a weighted signal.
-- The "Status" column in Google Sheets is intentionally left blank for manual follow-up tracking by the sales/marketing team.
+- Add deduplication (e.g., checking if an email/leadId already exists in the sheet before appending).
+- Support batch lead submissions in a single API call.
+- Move the scoring rubric weights to a configurable source (e.g., a settings sheet) instead of hardcoding them in the Code node.
+- Add retry logic or a dead-letter queue for failed downstream actions (e.g., Gmail send failure).
+- Add a lightweight dashboard (e.g., a Google Sheets summary tab or a simple web page) to visualize lead volume by priority over time.
