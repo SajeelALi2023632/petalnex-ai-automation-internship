@@ -1,1 +1,51 @@
+# AI Customer Support Triage System
+
+An end-to-end, automated support ticket triage workflow built with n8n, Gemini LLM, and Gmail SMTP. 
+
+This system ingests unstructured customer messages, evaluates their urgency and context using structured AI output, routes tickets to appropriate internal departments, logs records into persistent data tables, and dispatches dynamic auto-replies.
+
+---
+
+## 🏗️ System Architecture
+
+The workflow operates as a 6-stage automated pipeline:
+
+[ Webhook ] -> [ Gemini LLM ] -> [ Code Node ] -> [ Switch Node ] -> [ Data Table & SMTP Email ]
+
+1. Webhook Listener (POST): Ingests JSON payloads containing customer support queries.
+2. Gemini LLM: Analyzes the issue against a strict system prompt and enforces structured classification.
+3. JavaScript Code Node: Parses and sanitizes raw model output into a clean JSON object.
+4. Switch Node: Routes execution dynamically based on the identified department (Finance, Engineering, Sales, Support).
+5. n8n Data Table: Persists structured records for internal auditing and tracking.
+6. SMTP Email Node: Dispatches a tailored, AI-generated response back to the customer.
+
+---
+
+## ⚙️ JSON Schema Definition
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "category": { "type": "string", "enum": ["Billing", "Technical", "Sales", "General"] },
+    "priority": { "type": "string", "enum": ["Low", "Medium", "High", "Urgent"] },
+    "sentiment": { "type": "string", "enum": ["Positive", "Neutral", "Frustrated", "Angry"] },
+    "department": { "type": "string", "enum": ["Finance", "Engineering", "Sales", "Support"] },
+    "summary": { "type": "string", "description": "A brief summary of the customer issue." },
+    "suggested_response": { "type": "string", "description": "An automated reply drafted for the customer." }
+  },
+  "required": ["category", "priority", "sentiment", "department", "summary", "suggested_response"]
+}
+```
+
+---
+
+## 📁 Submission File Structure
+
+- workflow.json         : Exported n8n workflow
+- schema.json           : Gemini JSON output schema
+- test_cases.json       : 10 test payloads with PowerShell execution commands
+- Appendix_E_Report.docx: Daily Progress Report
+- README.md             : Project documentation
 
