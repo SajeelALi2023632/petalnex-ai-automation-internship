@@ -1,0 +1,244 @@
+{
+  "gemini": {
+    "provider": "gemini-1.5-flash",
+    "model": "gemini-1.5-flash",
+    "rows": [
+      {
+        "id": 1,
+        "text": "This blender broke after two uses and customer service never replied.",
+        "expected": "negative",
+        "predicted": "negative",
+        "raw_output": "negative",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 2,
+        "text": "Absolutely love this jacket, warm and looks great too!",
+        "expected": "positive",
+        "predicted": "positive",
+        "raw_output": "positive",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 3,
+        "text": "It's fine. Does the job, nothing special.",
+        "expected": "neutral",
+        "predicted": "positive",
+        "raw_output": "positive",
+        "pass": false,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 4,
+        "text": "Worst purchase I've made this year, total waste of money.",
+        "expected": "negative",
+        "predicted": "negative",
+        "raw_output": "negative",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 5,
+        "text": "Fast shipping and the product matches the description perfectly.",
+        "expected": "positive",
+        "predicted": "positive",
+        "raw_output": "positive",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 6,
+        "text": "Arrived on time, packaging was okay, product is average quality.",
+        "expected": "neutral",
+        "predicted": "neutral",
+        "raw_output": "neutral",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 7,
+        "text": "Exceeded my expectations, will definitely buy again!",
+        "expected": "positive",
+        "predicted": "positive",
+        "raw_output": "positive",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 8,
+        "text": "The screen has a dead pixel and the seller won't issue a refund.",
+        "expected": "negative",
+        "predicted": "neutral",
+        "raw_output": "neutral",
+        "pass": false,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 9,
+        "text": "It works as described. No complaints, no strong praise either.",
+        "expected": "neutral",
+        "predicted": "neutral",
+        "raw_output": "neutral",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 10,
+        "text": "Terrible experience, item was damaged and support was rude.",
+        "expected": "negative",
+        "predicted": "negative",
+        "raw_output": "negative",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      }
+    ],
+    "accuracy_pct": 80.0,
+    "avg_latency_sec": 0.8,
+    "avg_input_tokens": 40.0,
+    "avg_output_tokens": 2.0,
+    "estimated_cost_per_1000_runs_usd": 0.014
+  },
+  "groq": {
+    "provider": "llama-3.1-8b-instant",
+    "model": "llama-3.1-8b-instant",
+    "rows": [
+      {
+        "id": 1,
+        "text": "This blender broke after two uses and customer service never replied.",
+        "expected": "negative",
+        "predicted": "negative",
+        "raw_output": "negative",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 2,
+        "text": "Absolutely love this jacket, warm and looks great too!",
+        "expected": "positive",
+        "predicted": "positive",
+        "raw_output": "positive",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 3,
+        "text": "It's fine. Does the job, nothing special.",
+        "expected": "neutral",
+        "predicted": "positive",
+        "raw_output": "positive",
+        "pass": false,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 4,
+        "text": "Worst purchase I've made this year, total waste of money.",
+        "expected": "negative",
+        "predicted": "negative",
+        "raw_output": "negative",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 5,
+        "text": "Fast shipping and the product matches the description perfectly.",
+        "expected": "positive",
+        "predicted": "positive",
+        "raw_output": "positive",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 6,
+        "text": "Arrived on time, packaging was okay, product is average quality.",
+        "expected": "neutral",
+        "predicted": "neutral",
+        "raw_output": "neutral",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 7,
+        "text": "Exceeded my expectations, will definitely buy again!",
+        "expected": "positive",
+        "predicted": "positive",
+        "raw_output": "positive",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 8,
+        "text": "The screen has a dead pixel and the seller won't issue a refund.",
+        "expected": "negative",
+        "predicted": "neutral",
+        "raw_output": "neutral",
+        "pass": false,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 9,
+        "text": "It works as described. No complaints, no strong praise either.",
+        "expected": "neutral",
+        "predicted": "neutral",
+        "raw_output": "neutral",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      },
+      {
+        "id": 10,
+        "text": "Terrible experience, item was damaged and support was rude.",
+        "expected": "negative",
+        "predicted": "negative",
+        "raw_output": "negative",
+        "pass": true,
+        "latency": 0.8,
+        "input_tokens": 40,
+        "output_tokens": 2
+      }
+    ],
+    "accuracy_pct": 80.0,
+    "avg_latency_sec": 0.8,
+    "avg_input_tokens": 40.0,
+    "avg_output_tokens": 2.0,
+    "estimated_cost_per_1000_runs_usd": 0.006
+  }
+}

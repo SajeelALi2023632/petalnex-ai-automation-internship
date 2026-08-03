@@ -1,0 +1,1 @@
+Classify the sentiment of the following customer review as exactly one word: positive, negative, or neutral. Respond with only that one word, nothing else.

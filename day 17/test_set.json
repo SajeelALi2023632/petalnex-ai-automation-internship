@@ -1,0 +1,12 @@
+[
+  {"id": 1, "text": "This blender broke after two uses and customer service never replied.", "expected": "negative"},
+  {"id": 2, "text": "Absolutely love this jacket, warm and looks great too!", "expected": "positive"},
+  {"id": 3, "text": "It's fine. Does the job, nothing special.", "expected": "neutral"},
+  {"id": 4, "text": "Worst purchase I've made this year, total waste of money.", "expected": "negative"},
+  {"id": 5, "text": "Fast shipping and the product matches the description perfectly.", "expected": "positive"},
+  {"id": 6, "text": "Arrived on time, packaging was okay, product is average quality.", "expected": "neutral"},
+  {"id": 7, "text": "Exceeded my expectations, will definitely buy again!", "expected": "positive"},
+  {"id": 8, "text": "The screen has a dead pixel and the seller won't issue a refund.", "expected": "negative"},
+  {"id": 9, "text": "It works as described. No complaints, no strong praise either.", "expected": "neutral"},
+  {"id": 10, "text": "Terrible experience, item was damaged and support was rude.", "expected": "negative"}
+]
