@@ -1,0 +1,102 @@
+[
+  {
+    "id": 1,
+    "category": "Billing",
+    "department": "Finance",
+    "priority": "High",
+    "sentiment": "Frustrated",
+    "customer_email": "user1@example.com",
+    "message": "I noticed a double charge on my credit card statement for this month’s subscription. Please refund the duplicate $49 charge immediately.",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"I noticed a double charge on my credit card statement for this month’s subscription. Please refund the duplicate $49 charge immediately.\", \"customer_email\": \"user1@example.com\"}'"
+  },
+  {
+    "id": 2,
+    "category": "Technical",
+    "department": "Engineering",
+    "priority": "Urgent",
+    "sentiment": "Angry",
+    "customer_email": "dev-lead@enterprise.com",
+    "message": "CRITICAL EMERGENCY: Our entire team is getting 500 Internal Server Errors when trying to access the dashboard. Production is down!",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"CRITICAL EMERGENCY: Our entire team is getting 500 Internal Server Errors when trying to access the dashboard. Production is down!\", \"customer_email\": \"dev-lead@enterprise.com\"}'"
+  },
+  {
+    "id": 3,
+    "category": "Sales",
+    "department": "Sales",
+    "priority": "Medium",
+    "sentiment": "Positive",
+    "customer_email": "procurement@company.com",
+    "message": "Hi team! We are looking to expand our team from 10 to 150 users next month. Do you offer custom enterprise pricing or bulk seat discounts?",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"Hi team! We are looking to expand our team from 10 to 150 users next month. Do you offer custom enterprise pricing or bulk seat discounts?\", \"customer_email\": \"procurement@company.com\"}'"
+  },
+  {
+    "id": 4,
+    "category": "General",
+    "department": "Support",
+    "priority": "Low",
+    "sentiment": "Neutral",
+    "customer_email": "fan@techmail.com",
+    "message": "Love the product so far! Is there any plan to add Dark Mode support to the desktop application in an upcoming update?",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"Love the product so far! Is there any plan to add Dark Mode support to the desktop application in an upcoming update?\", \"customer_email\": \"fan@techmail.com\"}'"
+  },
+  {
+    "id": 5,
+    "category": "Technical",
+    "department": "Engineering",
+    "priority": "Medium",
+    "sentiment": "Frustrated",
+    "customer_email": "analyst@data.io",
+    "message": "Whenever I try to export my monthly metrics report to PDF, the formatting gets cut off on page 2. I am using Chrome v122.",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"Whenever I try to export my monthly metrics report to PDF, the formatting gets cut off on page 2. I am using Chrome v122.\", \"customer_email\": \"analyst@data.io\"}'"
+  },
+  {
+    "id": 6,
+    "category": "Billing",
+    "department": "Finance",
+    "priority": "Low",
+    "sentiment": "Neutral",
+    "customer_email": "accounts@business.org",
+    "message": "Could you please email me a copy of our tax invoice for Q2 2026? Our accounting department needs it for audit compliance.",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"Could you please email me a copy of our tax invoice for Q2 2026? Our accounting department needs it for audit compliance.\", \"customer_email\": \"accounts@business.org\"}'"
+  },
+  {
+    "id": 7,
+    "category": "Sales",
+    "department": "Sales",
+    "priority": "Urgent",
+    "sentiment": "Angry",
+    "customer_email": "vp-ops@bigcorp.com",
+    "message": "If I do not get a call from an account executive today regarding our contract renewal terms, we will be cancelling our subscription and moving to a competitor.",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"If I do not get a call from an account executive today regarding our contract renewal terms, we will be cancelling our subscription and moving to a competitor.\", \"customer_email\": \"vp-ops@bigcorp.com\"}'"
+  },
+  {
+    "id": 8,
+    "category": "Technical",
+    "department": "Engineering",
+    "priority": "High",
+    "sentiment": "Frustrated",
+    "customer_email": "api-admin@client.net",
+    "message": "Our REST API webhooks stopped delivering payloads around 14:00 UTC today. OAuth token generation is returning HTTP 401 Unauthorized errors.",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"Our REST API webhooks stopped delivering payloads around 14:00 UTC today. OAuth token generation is returning HTTP 401 Unauthorized errors.\", \"customer_email\": \"api-admin@client.net\"}'"
+  },
+  {
+    "id": 9,
+    "category": "General",
+    "department": "Support",
+    "priority": "Low",
+    "sentiment": "Neutral",
+    "customer_email": "admin@startup.co",
+    "message": "Where can I update the primary email address associated with my administrator profile?",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"Where can I update the primary email address associated with my administrator profile?\", \"customer_email\": \"admin@startup.co\"}'"
+  },
+  {
+    "id": 10,
+    "category": "Billing",
+    "department": "Finance",
+    "priority": "Medium",
+    "sentiment": "Neutral",
+    "customer_email": "finance@client.com",
+    "message": "My corporate Visa card expired, but the billing settings page gives me an error saying Invalid Zip Code when I try adding the new card.",
+    "powershell_command": "Invoke-RestMethod -Uri \"http://localhost:5678/webhook-test/support-ticket\" -Method Post -ContentType \"application/json\" -Body '{\"message\": \"My corporate Visa card expired, but the billing settings page gives me an error saying Invalid Zip Code when I try adding the new card.\", \"customer_email\": \"finance@client.com\"}'"
+  }
+]
