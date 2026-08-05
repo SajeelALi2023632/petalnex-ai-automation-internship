@@ -1,0 +1,76 @@
+
+HR Policy Assistant — RAG Chatbot (n8n)
+Objective
+A Retrieval-Augmented Generation (RAG) assistant that answers employee questions strictly from a company HR knowledge base, with a safe fallback for unknown questions and source citation in every grounded answer.
+
+Overview
+This project was built in n8n and consists of two workflows:
+
+Ingestion Workflow — loads HR policy documents, splits them into chunks, generates embeddings, and stores them in a vector store.
+Q&A Workflow — a chat-based AI Agent that retrieves relevant chunks from the vector store and answers user questions strictly based on that content.
+Knowledge Base
+The assistant is grounded in 5 HR policy documents:
+
+leave_policy.txt
+working_hours_policy.txt
+attendance_policy.txt
+internship_guidelines.txt
+code_of_conduct.txt
+Tech Stack
+Automation platform: n8n (self-hosted)
+Chat model: Google Gemini (gemini-2.5-flash)
+Embeddings: Google Gemini Embeddings
+Vector store: n8n Simple Vector Store (in-memory)
+Architecture
+1. Ingestion Workflow
+Manual Trigger
+  → Read Files from Disk (loads all 5 .txt files)
+  → Extract from File (Extract From Text File)
+  → Simple Vector Store (Insert Documents)
+        ├── Document → Default Data Loader → Recursive Character Text Splitter
+        │     (Chunk Size: 500, Chunk Overlap: 50)
+        └── Embedding → Embeddings Google Gemini
+Run this workflow once to populate the vector store. Since the vector store is in-memory, it must be re-run any time n8n restarts.
+
+2. Q&A Workflow
+Chat Trigger (When chat message received)
+  → AI Agent
+        ├── Chat Model → Google Gemini Chat Model
+        ├── Memory → Simple Memory (optional, for conversation context)
+        └── Tool → Simple Vector Store (Retrieve Documents as Tool)
+              └── Embedding → Embeddings Google Gemini
+Grounded Prompting (System Message)
+The AI Agent uses the following system prompt to enforce strictly grounded, cited answers with a safe fallback:
+
+You are an HR Policy Assistant for the company. You must answer employee questions strictly using information retrieved from the HR knowledge base tool provided to you.
+
+Rules:
+1. Always use the knowledge base tool to search for relevant information before answering.
+2. Answer ONLY using information found in the retrieved context. Do not use outside knowledge or make assumptions.
+3. If the retrieved context does not contain the answer to the question, respond exactly with: "This information is not available in the knowledge base. Please check with HR directly."
+4. When you do answer, briefly mention which policy area the answer came from (e.g., "According to the Leave Policy...").
+5. Do not invent, guess, or infer policies that are not explicitly stated in the retrieved documents.
+6. Keep answers clear, concise, and professional.
+How to Run
+Install n8n: npm install -g n8n
+Start n8n: n8n (or set N8N_RESTRICT_FILE_ACCESS_TO env variable if reading local files, e.g. $env:N8N_RESTRICT_FILE_ACCESS_TO="C:\path\to\RAG data" on Windows PowerShell)
+Open http://localhost:5678
+Import or rebuild the two workflows above
+Add your Google Gemini API credential to both the Chat Model and Embeddings nodes
+Run the Ingestion Workflow first (Execute Workflow) to populate the vector store
+Open the Q&A Workflow, open the chat panel, and start asking questions
+Example Questions
+"How many casual leaves are allowed?"
+"What are the standard working hours?"
+"What is the dress code policy?"
+"How many casual leaves are interns entitled to?"
+"What is the WiFi password?" (fallback example — not covered by the knowledge base)
+Known Limitations
+The vector store is in-memory and experimental — all embedded data is lost on n8n restart and must be re-ingested.
+Free-tier Gemini API quotas can be limited for larger models (e.g. gemini-2.5-pro); gemini-2.5-flash is recommended for reliability.
+Not intended for production use without switching to a persistent vector store (e.g. Pinecone, Qdrant, Supabase).
+Deliverables
+workflow.json — exported n8n workflow(s)
+5 example Q&A screenshots (including one fallback example)
+This README
+
