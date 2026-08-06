@@ -1,0 +1,271 @@
+{
+  "name": "My workflow 5",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -560,
+        -96
+      ],
+      "id": "5391a8c2-f9d4-4903-b9ab-9e1c9f83c46b",
+      "name": "When chat message received",
+      "webhookId": "33f5d799-e988-4c38-9ef3-27de267adb33"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Before logging any leave request, you must first summarize the details back to the user (employee name, leave type, and leave dates) and explicitly ask: \"Shall I go ahead and submit this request?\"\n\nOnly call the leave-logging tool after the user clearly confirms (e.g., says \"yes\", \"confirm\", \"go ahead\"). If the user has not yet confirmed, do not call the tool — just ask for confirmation and wait for their response."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -384,
+        -96
+      ],
+      "id": "0cae2ea4-add4-4390-a2fc-dc908b406693",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -576,
+        144
+      ],
+      "id": "856656e3-e4fa-4dc1-b514-01aacd95fb2e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2iuYFOKF0RtEigVq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Searches the company HR policy knowledge base covering leave policy, working hours, attendance, internship guidelines, and code of conduct. Use this to answer any employee question about HR rules or policies.",
+        "memoryKey": {
+          "__rl": true,
+          "mode": "list",
+          "value": "vector_store_key"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        -80,
+        48
+      ],
+      "id": "287b7239-e77b-4e7b-918d-160eeb0175bd",
+      "name": "Simple Vector Store"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        48,
+        224
+      ],
+      "id": "2ef6fe68-4994-49e0-9870-b203d14fcb68",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2iuYFOKF0RtEigVq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -384,
+        160
+      ],
+      "id": "ed7dff91-ca60-4c38-ae6c-ae20fb223a0a",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Checks whether a specific date is a public holiday. Uses an international holiday API that only covers a limited set of countries (mainly Europe, North America, and a few others — Pakistan is NOT supported). If the API returns no data or an error for the requested country, tell the user this data isn't available for that country — do not retry the same call multiple times.",
+        "url": "=https://date.nager.at/api/v3/PublicHolidays/{{ $fromAI(\"year\", \"The 4-digit year to check, e.g. 2026\", \"string\") }}/{{ $fromAI(\"countryCode\", \"2-letter ISO country code, e.g. PK for Pakistan or US for United States\", \"string\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.5,
+      "position": [
+        -112,
+        176
+      ],
+      "id": "c2dd08fc-4698-45d8-87d5-4ab570e866e4",
+      "name": "check_public_holiday"
+    },
+    {
+      "parameters": {
+        "description": "Logs a new leave request to the company's leave request file. Use this ONLY after the user has explicitly confirmed they want to submit the request. Requires employee name, leave type, and leave dates.",
+        "workflowId": {
+          "__rl": true,
+          "value": "N7yOabRypFoIakVR",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/N7yOabRypFoIakVR",
+          "cachedResultName": "My workflow 6"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "employeeName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('employeeName', ``, 'string') }}",
+            "leaveType": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('leaveType', ``, 'string') }}",
+            "leaveDates": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('leaveDates', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "employeeName",
+              "displayName": "employeeName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "leaveType",
+              "displayName": "leaveType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "leaveDates",
+              "displayName": "leaveDates",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        112
+      ],
+      "id": "3b460402-1d51-4301-8ee2-00c055db48d5",
+      "name": "Call 'My workflow 6'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Simple Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_public_holiday": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'My workflow 6'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "482954d7-96b2-4e80-998f-b5aa97cdb1a3",
+  "meta": {
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "aPeov0ooRcEjT8oj",
+  "tags": []
+}

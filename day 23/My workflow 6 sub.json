@@ -1,0 +1,146 @@
+{
+  "name": "My workflow 6",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "employeeName"
+            },
+            {
+              "name": "leaveType"
+            },
+            {
+              "name": "leaveDates"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        -16
+      ],
+      "id": "120bbbc1-d30f-42e2-b705-20e594112d07",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "C:\\Users\\ali\\Desktop\\Task23\\leave_requests_log.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        -16
+      ],
+      "id": "655dde13-8cf4-4198-ad66-74c940cbfffb",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "fileSelector": "C:\\Users\\ali\\Desktop\\Task23\\leave_requests_log.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -192,
+        -144
+      ],
+      "id": "b68eae48-f123-4e11-a0e4-bf4b6b9fb27c",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        32,
+        -144
+      ],
+      "id": "94af2628-5537-4754-a677-f6b9f47072e9",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const existingContent = $input.first().json.data;\nconst trigger = $('When Executed by Another Workflow').first().json;\nconst newRow = `\\n${trigger.employeeName},${trigger.leaveType},${trigger.leaveDates}`;\nconst finalContent = existingContent.trim() + newRow;\n\nreturn [{\n  json: {},\n  binary: {\n    data: {\n      data: Buffer.from(finalContent).toString('base64'),\n      mimeType: 'text/csv',\n      fileName: 'leave_requests_log.csv'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        -144
+      ],
+      "id": "0c7f5b35-6582-4461-9b60-fe78cc0646b9",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "5569c20a-efd3-4393-b11a-330776d4da77",
+  "meta": {
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "N7yOabRypFoIakVR",
+  "tags": []
+}
