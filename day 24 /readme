@@ -1,0 +1,107 @@
+Petalnex Knowledge Assistant
+
+A Retrieval-Augmented Generation (RAG) AI assistant built in **n8n**, answering questions about the fictional company **Petalnex Pvt. Ltd.** using a vector database and grounded, source-cited responses.
+
+Built as the Day 24 / Week 4 capstone project for an AI Automation Internship: *"Deliver a complete RAG/agent assistant over real company knowledge."*
+
+---
+
+## What it does
+
+Ask it things like:
+- "How much does the standard internship track cost?"
+- "What happens if I submit an assignment 2 days late?"
+- "Does Petalnex have an office in Mumbai?"
+
+...and it answers using only facts stored in its knowledge base, cites the source document, and gracefully declines to answer (rather than hallucinating) when it doesn't know something.
+
+---
+
+## Architecture
+
+```
+knowledge_base.json
+        │
+        ▼
+  Ingestion Workflow
+  (n8n)
+        │
+   chunk → embed (Gemini) → store
+        │
+        ▼
+  Supabase (pgvector)
+        ▲
+        │  retrieve (top-k similarity search)
+        │
+  Query Workflow (n8n)
+        │
+  User question ──▶ RAG Agent ──▶ Google Gemini ──▶ Answer + source
+        ▲
+        │
+  Conversation memory (session-based)
+```
+
+**Stack:**
+- [n8n](https://n8n.io) — workflow orchestration (LangChain nodes)
+- [Supabase](https://supabase.com) — Postgres + pgvector for vector storage & similarity search
+- [Google Gemini](https://ai.google.dev) — embeddings (`gemini-embedding-001`) + generation
+
+---
+
+## Repo contents
+
+| File | Description |
+|---|---|
+| `knowledge_base.json` | 22 knowledge entries about Petalnex (company info, internship program, pricing, policies, support, curriculum) |
+| `supabase_setup.sql` | Creates the `petalnex_knowledge` table + `match_petalnex_knowledge` pgvector similarity function |
+| `1_ingestion_workflow.json` | n8n workflow — loads the knowledge base, builds documents, embeds, and inserts into Supabase |
+| `2_query_workflow.json` | n8n workflow — chat trigger → RAG agent → vector retrieval tool → Gemini generation → grounded answer, with conversation memory |
+| `build_documents_code.js` | Code-node script that converts `knowledge_base.json` into clean `pageContent` + `metadata` documents (avoids common n8n JSON-flattening pitfalls — see Troubleshooting below) |
+| `example_queries.md` | 10 example test queries with actual assistant responses and pass/fail notes |
+
+---
+
+## Setup
+
+### 1. Supabase
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Open the **SQL Editor**, paste in `supabase_setup.sql`, and run it.
+3. Note your **Project URL** and **service_role key** (Settings → API) for the next step.
+
+### 2. Google Gemini
+Get an API key from [Google AI Studio](https://aistudio.google.com).
+
+### 3. n8n
+1. Add credentials: a **Supabase** credential (URL + service_role key) and a **Google Gemini (PaLM) Api** credential (API key).
+2. Import `1_ingestion_workflow.json`. Attach both credentials to their respective nodes.
+3. In the Code node, paste in the contents of `build_documents_code.js` (this embeds `knowledge_base.json` inline — no external file reads needed inside the sandboxed Code node).
+4. Click **Execute workflow**. Confirm **22 items** flow cleanly through every node with no errors.
+5. Verify in Supabase Table Editor: `petalnex_knowledge` should have exactly 22 rows, each with populated `content`, `metadata`, and `embedding` columns.
+6. Import `2_query_workflow.json`, attach the same credentials, and activate it.
+7. Open the chat panel and start asking questions.
+
+---
+
+## Requirements checklist
+
+- ✅ 22 knowledge entries (exceeds the 20 minimum)
+- ✅ Vector similarity search (Supabase pgvector) + AI-generated answers (Gemini)
+- ✅ "Information not available" fallback — the agent's system prompt enforces this, and it correctly avoids hallucinating (see query #10 in `example_queries.md`)
+- ✅ Source citation on every answer
+- ✅ **Bonus:** conversation memory via session-keyed buffer window memory
+
+---
+
+## Troubleshooting notes (from building this)
+
+A few real issues hit while building this, in case they help someone else:
+
+- **"vector must have at least 1 dimension" error on insert** — usually means the embedding model and the Supabase `vector(N)` column size don't match, or (sneakily) that you've hit the free-tier Gemini rate limit and some embeddings silently returned empty. Check the embedding model's actual output dimension and match your table's `vector()` size exactly.
+- **Row count far exceeding the number of knowledge entries (e.g. 110 rows from 22 entries)** — caused by the **Default Data Loader** node's "Load All Input Data" mode flattening every JSON key (id, title, category, source, etc.) into a *separate* document. Fix: switch its Mode to **"Load Specific Data"**, point **Data** explicitly at `{{ $json.pageContent }}`, and add each metadata field individually under **Options → Metadata** (not as one dumped object).
+- **Weak/incomplete retrieved answers** — increase the vector store's **Top K** (we used 6) so semantically related but distinct facts (e.g. "founding year" vs. "mission statement") both make it into context.
+
+---
+
+## License
+
+MIT — this is a training/demo project using fictional company data.
