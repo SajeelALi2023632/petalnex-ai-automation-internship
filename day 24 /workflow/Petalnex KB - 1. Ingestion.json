@@ -1,0 +1,170 @@
+{
+  "name": "Petalnex KB - 1. Ingestion",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "905e2c23-e5d3-4311-8958-0535067eee80",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "mode": "list",
+          "value": "petalnex_knowledge"
+        },
+        "options": {
+          "queryName": "match_petalnex_knowledge"
+        }
+      },
+      "id": "c4709c35-adb8-4848-9126-332f7d97f977",
+      "name": "Supabase Vector Store (Insert)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [
+        384,
+        -112
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xIZpxLiLqMK0PYJu",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "=models/gemini-embedding-001"
+      },
+      "id": "1292f2f9-4193-469a-8032-b6d53812e77d",
+      "name": "Embeddings Google Gemini",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        368,
+        192
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2iuYFOKF0RtEigVq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const kb = [\n  {\n    \"id\": \"KB001\",\n    \"category\": \"Company Overview\",\n    \"title\": \"About Petalnex\",\n    \"content\": \"Petalnex Pvt. Ltd. is an AI automation training and consulting company founded in 2023. The company specializes in workflow automation using tools like n8n, AI agent design, and Retrieval-Augmented Generation (RAG) systems. Petalnex runs a flagship 'AI Automation Internship' program that trains students through a structured day-by-day curriculum culminating in real-world projects.\",\n    \"source\": \"company_handbook.pdf, p.1\"\n  },\n  {\n    \"id\": \"KB002\",\n    \"category\": \"Company Overview\",\n    \"title\": \"Mission Statement\",\n    \"content\": \"Petalnex's mission is to make AI automation skills accessible to students and working professionals by combining hands-on projects with mentor-led guidance, so learners can build production-ready automations, not just toy demos.\",\n    \"source\": \"company_handbook.pdf, p.1\"\n  },\n  {\n    \"id\": \"KB003\",\n    \"category\": \"Company Overview\",\n    \"title\": \"Office Locations\",\n    \"content\": \"Petalnex's headquarters is in Bengaluru, India, with a secondary support office in Pune. The company operates fully remote for internship delivery, with all sessions conducted online.\",\n    \"source\": \"company_handbook.pdf, p.2\"\n  },\n  {\n    \"id\": \"KB004\",\n    \"category\": \"Internship Program\",\n    \"title\": \"AI Automation Internship Overview\",\n    \"content\": \"The AI Automation Internship is a 4-week, 24-working-day intensive program. Each week focuses on a theme: Week 1 covers n8n fundamentals, Week 2 covers integrations and APIs, Week 3 covers AI agents and prompt engineering, and Week 4 covers RAG systems and capstone projects.\",\n    \"source\": \"internship_syllabus.pdf, p.1\"\n  },\n  {\n    \"id\": \"KB005\",\n    \"category\": \"Internship Program\",\n    \"title\": \"Weekly Assignments\",\n    \"content\": \"Every day of the internship includes a practical assignment that must be submitted before the next day's session. Day 24, the final assignment, requires interns to build a complete RAG/agent assistant over real company knowledge, including a vector database, retrieval pipeline, and generation step.\",\n    \"source\": \"internship_syllabus.pdf, p.20\"\n  },\n  {\n    \"id\": \"KB006\",\n    \"category\": \"Internship Program\",\n    \"title\": \"Certification Criteria\",\n    \"content\": \"Interns receive a certificate of completion only if they submit all 24 daily assignments and pass the final capstone review. The capstone review checks that the workflow JSON runs end-to-end, the knowledge base has at least 20 entries, and the intern can demo the assistant live in 2-5 minutes.\",\n    \"source\": \"internship_syllabus.pdf, p.20\"\n  },\n  {\n    \"id\": \"KB007\",\n    \"category\": \"Internship Program\",\n    \"title\": \"Mentor Support\",\n    \"content\": \"Each cohort of interns is assigned a dedicated mentor who reviews daily submissions and hosts two live doubt-clearing sessions per week. Mentors respond to queries on the internal Slack workspace within 24 hours on working days.\",\n    \"source\": \"internship_syllabus.pdf, p.3\"\n  },\n  {\n    \"id\": \"KB008\",\n    \"category\": \"Internship Program\",\n    \"title\": \"Internship Duration and Schedule\",\n    \"content\": \"The internship runs Monday to Friday, with daily live sessions from 10:00 AM to 12:00 PM IST, followed by self-paced project work. Interns are expected to spend approximately 4-6 hours per day on the program.\",\n    \"source\": \"internship_syllabus.pdf, p.2\"\n  },\n  {\n    \"id\": \"KB009\",\n    \"category\": \"Products & Services\",\n    \"title\": \"Automation Consulting Service\",\n    \"content\": \"Beyond training, Petalnex offers paid automation consulting for small and mid-sized businesses, building custom n8n workflows for lead generation, customer support automation, and internal reporting dashboards.\",\n    \"source\": \"services_brochure.pdf, p.1\"\n  },\n  {\n    \"id\": \"KB010\",\n    \"category\": \"Products & Services\",\n    \"title\": \"Managed n8n Hosting\",\n    \"content\": \"Petalnex provides managed n8n hosting for clients who do not want to self-host. This includes daily backups, uptime monitoring, and priority email support, billed monthly per workflow environment.\",\n    \"source\": \"services_brochure.pdf, p.2\"\n  },\n  {\n    \"id\": \"KB011\",\n    \"category\": \"Pricing\",\n    \"title\": \"Internship Fee\",\n    \"content\": \"The AI Automation Internship costs INR 12,999 for the standard track and INR 18,999 for the premium track, which includes 1:1 mentor calls and a guaranteed project portfolio review. Early-bird enrollment offers a 15% discount if paid at least 2 weeks before the cohort start date.\",\n    \"source\": \"pricing_sheet.pdf, p.1\"\n  },\n  {\n    \"id\": \"KB012\",\n    \"category\": \"Pricing\",\n    \"title\": \"Consulting Rates\",\n    \"content\": \"Automation consulting engagements are billed at INR 2,500 per hour, or as fixed-price project quotes for well-defined scopes. A minimum engagement of 10 hours applies to all new consulting clients.\",\n    \"source\": \"pricing_sheet.pdf, p.2\"\n  },\n  {\n    \"id\": \"KB013\",\n    \"category\": \"Pricing\",\n    \"title\": \"Managed Hosting Plans\",\n    \"content\": \"Managed n8n hosting starts at INR 3,999 per month for a single workflow environment with up to 5,000 executions, and scales to INR 9,999 per month for unlimited workflows with priority support.\",\n    \"source\": \"pricing_sheet.pdf, p.2\"\n  },\n  {\n    \"id\": \"KB014\",\n    \"category\": \"Policies\",\n    \"title\": \"Refund Policy\",\n    \"content\": \"Petalnex offers a full refund on internship fees if requested within 3 days of cohort start, provided the intern has not accessed more than 2 days of course content. No refunds are issued after the first week of the cohort.\",\n    \"source\": \"terms_and_policies.pdf, p.4\"\n  },\n  {\n    \"id\": \"KB015\",\n    \"category\": \"Policies\",\n    \"title\": \"Attendance Policy\",\n    \"content\": \"Interns must maintain at least 80% attendance in live sessions to remain eligible for the completion certificate. Interns who miss a live session can watch the recording but must still submit that day's assignment on time.\",\n    \"source\": \"terms_and_policies.pdf, p.5\"\n  },\n  {\n    \"id\": \"KB016\",\n    \"category\": \"Policies\",\n    \"title\": \"Late Submission Policy\",\n    \"content\": \"Assignments submitted up to 24 hours late incur no penalty. Submissions between 24 and 72 hours late are accepted with a 10% score deduction. Submissions beyond 72 hours late are not accepted unless an extension was pre-approved by the mentor.\",\n    \"source\": \"terms_and_policies.pdf, p.5\"\n  },\n  {\n    \"id\": \"KB017\",\n    \"category\": \"Policies\",\n    \"title\": \"Code of Conduct\",\n    \"content\": \"Interns are expected to maintain professional conduct in all Slack channels and live sessions. Plagiarized assignment submissions, including uncredited AI-generated work presented as original analysis, may result in disqualification from the certification track.\",\n    \"source\": \"terms_and_policies.pdf, p.6\"\n  },\n  {\n    \"id\": \"KB018\",\n    \"category\": \"Support\",\n    \"title\": \"Support Channels\",\n    \"content\": \"Interns can reach support through the #help-desk Slack channel, email at support@petalnex.example, or the in-portal ticketing system. General support queries are answered within 1 business day.\",\n    \"source\": \"support_guide.pdf, p.1\"\n  },\n  {\n    \"id\": \"KB019\",\n    \"category\": \"Support\",\n    \"title\": \"Technical Issue Escalation\",\n    \"content\": \"For urgent technical issues that block coursework, such as broken sandbox environments, interns should mark their ticket as 'Urgent' in the support portal, which triggers a response within 4 hours during business hours.\",\n    \"source\": \"support_guide.pdf, p.2\"\n  },\n  {\n    \"id\": \"KB020\",\n    \"category\": \"Support\",\n    \"title\": \"Business Hours\",\n    \"content\": \"Petalnex support and admin teams operate Monday through Friday, 9:00 AM to 6:00 PM IST. The support desk is closed on Indian public holidays, with a holiday calendar published at the start of each year.\",\n    \"source\": \"support_guide.pdf, p.1\"\n  },\n  {\n    \"id\": \"KB021\",\n    \"category\": \"Tools & Curriculum\",\n    \"title\": \"Tools Covered in the Internship\",\n    \"content\": \"The curriculum covers n8n as the core automation platform, along with integrations for Google Sheets, Slack, Telegram, Supabase, Pinecone, OpenAI, and Google Gemini for building AI-powered workflows and RAG assistants.\",\n    \"source\": \"internship_syllabus.pdf, p.4\"\n  },\n  {\n    \"id\": \"KB022\",\n    \"category\": \"Tools & Curriculum\",\n    \"title\": \"Capstone Project Requirements\",\n    \"content\": \"The Week 4 capstone project requires interns to build a Company Knowledge AI Assistant: a RAG pipeline that ingests at least 20 knowledge entries into a vector database and answers user questions with retrieval-grounded, AI-generated responses, including a fallback for unanswerable questions.\",\n    \"source\": \"internship_syllabus.pdf, p.20\"\n  }\n];\n\nreturn kb.map(entry => ({\n  json: {\n    pageContent: `${entry.title}: ${entry.content}`,\n    metadata: {\n      id: entry.id,\n      category: entry.category,\n      title: entry.title,\n      source: entry.source\n    }\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        -112
+      ],
+      "id": "00b5ab96-9a55-4c7e-b761-d023ee5074f5",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.pageContent }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "id",
+                "value": "={{ $json.metadata.id }}"
+              },
+              {
+                "name": "category",
+                "value": "={{ $json.metadata.category }}"
+              },
+              {
+                "name": "title",
+                "value": "={{ $json.metadata.title }}"
+              },
+              {
+                "name": "source",
+                "value": "={{ $json.metadata.source }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        160
+      ],
+      "id": "9388a019-2a9b-4e3e-999e-492720b79928",
+      "name": "Default Data Loader"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store (Insert)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Supabase Vector Store (Insert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Supabase Vector Store (Insert)",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8fb761b4-522c-4ac0-ac51-d231a2d48add",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "HkgufvML8moxnY1l",
+  "tags": []
+}
