@@ -1,0 +1,190 @@
+{
+  "name": "Day26 - Hardened API Workflow (Reliable)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-560, -32],
+      "id": "f1a1a111-1111-4111-8111-111111111111",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "jsCode": "const url = 'https://this-domain-does-not-exist-xyz123.com';\nconst maxTries = 3;\nconst waitMs = 1000;\n\nlet success = false;\nlet statusCode = null;\nlet lastError = null;\n\nfor (let attempt = 1; attempt <= maxTries; attempt++) {\n  try {\n    const response = await fetch(url, { method: 'GET' });\n    statusCode = response.status;\n    if (response.ok) {\n      success = true;\n      break;\n    } else {\n      lastError = `HTTP ${response.status}`;\n    }\n  } catch (error) {\n    lastError = error.message;\n  }\n  if (attempt < maxTries) {\n    await new Promise((resolve) => setTimeout(resolve, waitMs));\n  }\n}\n\nreturn [\n  {\n    json: {\n      success,\n      statusCode,\n      error: success ? null : lastError,\n      attempts: maxTries,\n      url,\n      timestamp: new Date().toISOString()\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-336, -32],
+      "id": "f2a2a222-2222-4222-8222-222222222222",
+      "name": "API Request (with Retry)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "g1a1a111-1111-4111-8111-111111111111",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-112, -32],
+      "id": "f3a3a333-3333-4333-8333-333333333333",
+      "name": "Successful?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "h1a1a111-1111-4111-8111-111111111111",
+              "name": "errorMessage",
+              "value": "={{ $json.error }}",
+              "type": "string"
+            },
+            {
+              "id": "h2a2a222-2222-4222-8222-222222222222",
+              "name": "statusCode",
+              "value": "={{ $json.statusCode }}",
+              "type": "string"
+            },
+            {
+              "id": "h3a3a333-3333-4333-8333-333333333333",
+              "name": "attempts",
+              "value": "={{ $json.attempts }}",
+              "type": "string"
+            },
+            {
+              "id": "h4a4a444-4444-4444-8444-444444444444",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "h5a5a555-5555-4555-8555-555555555555",
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [112, -128],
+      "id": "f4a4a444-4444-4444-8444-444444444444",
+      "name": "Log Error - Format Fields"
+    },
+    {
+      "parameters": {
+        "fromEmail": "sajeelali307@gmail.com",
+        "toEmail": "flmh2773@gmail.com",
+        "subject": "n8n Workflow Failure Alert",
+        "html": "=<p><strong>API request failed after {{ $json.attempts }} attempts.</strong></p><p><b>URL:</b> {{ $json.url }}</p><p><b>Status Code:</b> {{ $json.statusCode }}</p><p><b>Error:</b> {{ $json.errorMessage }}</p><p><b>Time:</b> {{ $json.timestamp }}</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [336, -128],
+      "id": "f5a5a555-5555-4555-8555-555555555555",
+      "name": "Notify Admin - Send Email",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [112, 64],
+      "id": "f6a6a666-6666-4666-8666-666666666666",
+      "name": "Continue - Success"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "API Request (with Retry)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Request (with Retry)": {
+      "main": [
+        [
+          {
+            "node": "Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Successful?": {
+      "main": [
+        [
+          {
+            "node": "Log Error - Format Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Continue - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error - Format Fields": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin - Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
