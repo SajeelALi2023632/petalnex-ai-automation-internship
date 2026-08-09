@@ -1,0 +1,338 @@
+{
+  "name": "Day28 - Human-in-the-Loop Refund Approval (Form)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "d67c359d-c06b-406d-bf49-0aa17eb2e874",
+      "name": "When clicking Test workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        64,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "customerName",
+              "value": "Ayesha Khan",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "orderId",
+              "value": "ORD-58291",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "requestType",
+              "value": "Refund Request",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "requestReason",
+              "value": "Item arrived damaged",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "requestedAmount",
+              "value": 149.99,
+              "type": "number"
+            },
+            {
+              "id": "a6",
+              "name": "approverEmail",
+              "value": "manager@yourcompany.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c432020c-b96c-4aaf-974f-e3d3fa52d6a9",
+      "name": "Mock Incoming Request",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        112
+      ],
+      "notesInFlow": true,
+      "notes": "Stand-in for a real trigger (e.g. a support-ticket webhook). Replace with your actual data source."
+    },
+    {
+      "parameters": {
+        "jsCode": "const amount = $json.requestedAmount;\nlet recommendation, reasoning;\n\nif (amount <= 100) {\n  recommendation = 'Approve';\n  reasoning = 'Low-value refund, matches standard policy for damaged-item claims.';\n} else {\n  recommendation = 'Approve (manager sign-off required)';\n  reasoning = 'Refund exceeds the $100 auto-approval threshold, so it is routed to a human for final sign-off before anything is processed.';\n}\n\nreturn [{\n  json: {\n    ...$json,\n    aiRecommendation: recommendation,\n    aiReasoning: reasoning\n  }\n}];"
+      },
+      "id": "d195b32a-f6c2-49cf-8997-d2a4913aa2d1",
+      "name": "AI Recommendation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -192
+      ],
+      "notesInFlow": true,
+      "notes": "Placeholder for your real AI node (e.g. the 'Message a model' node from Day 26/27). It only PROPOSES a decision - it never executes it directly."
+    },
+    {
+      "parameters": {
+        "fromEmail": "sajeelali307@gmail.com",
+        "toEmail": "={{ $json.approverEmail }}",
+        "subject": "=Decision needed: {{ $json.requestType }} for {{ $json.orderId }}",
+        "html": "=<p>A refund request needs your review before any action is taken.</p><p><b>Customer:</b> {{ $json.customerName }} &nbsp; <b>Amount:</b> ${{ $json.requestedAmount }}</p><p><b>AI recommends:</b> {{ $json.aiRecommendation }}</p><p><a href=\"{{ $execution.resumeUrl }}\">Open the approval dialog →</a></p>",
+        "options": {}
+      },
+      "id": "94f07638-937b-4b65-b4b3-137a94590005",
+      "name": "Notify Approver",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        112
+      ],
+      "notesInFlow": true,
+      "webhookId": "97b75d30-4db5-46ba-b483-6a195b99a2cc",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      },
+      "notes": "Requires an SMTP/Gmail credential. This just pings the approver with a link - the actual decision now happens in the friendly form dialog opened at that link, not in the email itself. You can swap this node for Slack/Telegram if you prefer."
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Refund Approval Needed",
+        "formDescription": "=Customer: {{ $json.customerName }}\nOrder: {{ $json.orderId }}\nReason: {{ $json.requestReason }}\nRequested amount: ${{ $json.requestedAmount }}\n\nAI recommendation: {{ $json.aiRecommendation }}\nReasoning: {{ $json.aiReasoning }}\n\nWhat would you like to do?",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Approve"
+                  },
+                  {
+                    "option": "Reject"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Notes (optional)",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7c47e31c-6aeb-4d7c-8665-0f8bfaf86793",
+      "name": "Approval Dialog",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        512,
+        -176
+      ],
+      "webhookId": "day28-approval-form",
+      "notesInFlow": true,
+      "notes": "Pauses the workflow and shows a clean pop-up form instead of raw links. You can open the link directly from the execution log while testing - no email needed."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.Decision }}",
+              "rightValue": "Approve",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "de59d6b2-423b-40dd-91aa-d60a145a589a",
+      "name": "Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "status",
+              "value": "Refund Processed",
+              "type": "string"
+            },
+            {
+              "id": "b2",
+              "name": "finalAction",
+              "value": "=Refund of ${{ $('Mock Incoming Request').item.json.requestedAmount }} issued to {{ $('Mock Incoming Request').item.json.customerName }} for order {{ $('Mock Incoming Request').item.json.orderId }}. Approver notes: {{ $json.Notes || 'none' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c9edff5f-7739-49ba-9e0a-c95e0b3ff182",
+      "name": "Process Approved Refund",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        784,
+        -192
+      ],
+      "notesInFlow": true,
+      "notes": "Replace with the real final action (e.g. HTTP Request to your payments API)."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c2",
+              "name": "status",
+              "value": "Rejected",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "finalAction",
+              "value": "=No refund issued for order {{ $('Mock Incoming Request').item.json.orderId }}. Approver notes: {{ $json.Notes || 'none' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eff369b2-e902-46ff-987a-2762f5cae8cf",
+      "name": "Notify Rejection",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        80
+      ],
+      "notesInFlow": true,
+      "notes": "Replace with a real notification step (e.g. email/Slack to the requester or support team)."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking Test workflow": {
+      "main": [
+        [
+          {
+            "node": "Mock Incoming Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Incoming Request": {
+      "main": [
+        [
+          {
+            "node": "AI Recommendation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Recommendation": {
+      "main": [
+        [
+          {
+            "node": "Notify Approver",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Approver": {
+      "main": [
+        [
+          {
+            "node": "Approval Dialog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Dialog": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approved?": {
+      "main": [
+        [
+          {
+            "node": "Process Approved Refund",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a3d8ba08-855d-4662-8a9d-8e94a50db24e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "JNK4TJFhDn2P3YwH",
+  "tags": []
+}
