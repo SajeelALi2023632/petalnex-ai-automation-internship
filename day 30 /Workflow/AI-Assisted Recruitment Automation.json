@@ -1,0 +1,1129 @@
+{
+  "name": "AI-Assisted Recruitment Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Candidate Application",
+        "formDescription": "Apply for an open role at Petalnex. All fields are required unless marked optional.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Years of Experience",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Resume / CV (paste as text)",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Position Applying For",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "LinkedIn URL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -656,
+        -304
+      ],
+      "id": "843cde87-b0d5-4c10-84d7-6fbea8974a49",
+      "name": "On form submission",
+      "webhookId": "d67d2fb4-61ca-4163-a943-e6c62015c5fe"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deterministic normalization of the raw form submission.\n// No AI involved here on purpose — this is pure data hygiene.\nconst f = $input.item.json;\n\nconst name = String(f['Full Name'] || '').trim();\nconst email = String(f['Email'] || '').trim().toLowerCase();\nconst position = String(f['Position Applying For'] || '').trim();\nconst yearsRaw = f['Years of Experience'];\nconst years = Number.isFinite(Number(yearsRaw)) ? Number(yearsRaw) : 0;\nconst resumeText = String(f['Resume / CV (paste as text)'] || '').replace(/\\s+/g, ' ').trim();\nconst linkedin = String(f['LinkedIn URL'] || '').trim();\n\n// Basic validation — deterministic error handling before anything costs an AI call\nconst errors = [];\nif (!name) errors.push('Missing name');\nif (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) errors.push('Invalid email');\nif (!position) errors.push('Missing position');\nif (resumeText.length < 30) errors.push('Resume text too short to analyze');\n\nreturn [{\n  json: {\n    name, email, position, years_experience: years,\n    resume_text: resumeText, linkedin_url: linkedin,\n    submitted_at: new Date().toISOString(),\n    validation_errors: errors,\n    is_valid: errors.length === 0,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        -304
+      ],
+      "id": "8ce439ff-ad13-4f98-8aba-b5330b5c0621",
+      "name": "Extract Candidate Information"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "62259efb-aa7a-4f6a-9467-1ffc47c0ebb8",
+              "leftValue": "={{ $json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -240,
+        -304
+      ],
+      "id": "a7f7a063-fc01-4727-849f-6543078e8684",
+      "name": "valid submission"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "candidates",
+          "mode": "list",
+          "cachedResultName": "candidates"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "position_applied": "={{ $json.position }}",
+            "years_experience": "={{ $json.years_experience }}",
+            "resume_text": "={{ $json.resume_text }}",
+            "linkedin_url": "={{ $json.linkedin_url }}",
+            "submitted_at": "={{ $json.submitted_at }}",
+            "final_status": "Pending Review",
+            "rule_score": 0,
+            "final_score": 0,
+            "ai_score": 0
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "candidate_id",
+              "displayName": "candidate_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "position_applied",
+              "displayName": "position_applied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "years_experience",
+              "displayName": "years_experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resume_text",
+              "displayName": "resume_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "final_status",
+              "displayName": "final_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ai_score",
+              "displayName": "ai_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ai_recommendation",
+              "displayName": "ai_recommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ai_reasoning",
+              "displayName": "ai_reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rule_score",
+              "displayName": "rule_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "final_score",
+              "displayName": "final_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decided_by",
+              "displayName": "decided_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decision_notes",
+              "displayName": "decision_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decided_at",
+              "displayName": "decided_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        64,
+        -320
+      ],
+      "id": "a2e2b3dd-e6d2-43b8-a10f-c2f679bbd43e",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "nOD6hje0JCtM0aeB",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a recruitment screening assistant. Analyze this candidate for the role below and extract structured information. AI assists only — you do NOT make the final hiring decision.\n\nPosition: {{ $('Extract Candidate Information').item.json.position }}\nYears of experience (self-reported): {{ $('Extract Candidate Information').item.json.years_experience }}\nResume:\n{{ $('Extract Candidate Information').item.json.resume_text }}\n\nRequired core skills for this role: JavaScript, SQL, REST APIs, Problem Solving.\n\nReturn ONLY a single valid JSON object (no markdown fences, no extra text) with these keys:\n- skills: array of skill strings found in the resume\n- experience_years: your best-estimate number of relevant years (may differ from self-reported)\n- score: integer 0-100 rating overall fit for the role\n- recommendation: one of \"Shortlist\", \"Reject\", \"Manual Review\"\n- reason: one or two sentence justification\n",
+        "messages": {
+          "messageValues": []
+        },
+        "batching": {}
+      },
+      "id": "f2a80c71-f0ea-4e37-8298-601ea84e47c1",
+      "name": "AI Analysis + Skills Extraction",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -736,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "id": "9ce09827-afab-46c4-a9f1-08171e8e97b8",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -736,
+        320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2iuYFOKF0RtEigVq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deterministic parse/repair/validate of the Gemini output.\n// Learned from Day 29: never spend a second AI call just to fix JSON formatting.\nconst raw = $input.item.json.text ?? '';\nlet text = String(raw).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();\n\nfunction tryParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }\n\nlet parsed = tryParse(text);\nif (!parsed) {\n  const m = text.match(/\\{[\\s\\S]*\\}/);\n  if (m) parsed = tryParse(m[0]);\n}\n\nconst allowedRec = ['Shortlist', 'Reject', 'Manual Review'];\nconst isValid = !!parsed\n  && Array.isArray(parsed.skills)\n  && typeof parsed.score === 'number'\n  && allowedRec.includes(parsed.recommendation)\n  && typeof parsed.reason === 'string';\n\nif (!isValid) {\n  console.log('[recruitment-ai] Parse/validation FAILED. Raw (first 400 chars):', text.slice(0, 400));\n  parsed = { skills: [], experience_years: 0, score: 0, recommendation: 'Manual Review',\n             reason: 'AI output could not be parsed — routed to manual review automatically.' };\n} else {\n  console.log(`[recruitment-ai] AI recommendation=${parsed.recommendation} score=${parsed.score}`);\n}\n\nreturn [{ json: { ...$('Extract Candidate Information').item.json, ai: parsed, ai_parse_ok: isValid } }];\n"
+      },
+      "id": "aaa51af4-48d3-4811-87bb-66bf47c8eedd",
+      "name": "Parse & Validate AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combines deterministic business rules with the AI's assessment.\n// Any disagreement between the rule engine and the AI is escalated to Manual Review\n// rather than silently trusting either one — final call always stays with a human.\nconst d = $input.item.json;\nconst requiredSkills = ['JavaScript', 'SQL', 'REST APIs', 'Problem Solving'];\nconst aiSkills = (d.ai.skills || []).map(s => String(s).toLowerCase());\n\nconst matched = requiredSkills.filter(rs => aiSkills.some(as => as.includes(rs.toLowerCase()) || rs.toLowerCase().includes(as)));\nconst ruleScore = Math.round((matched.length / requiredSkills.length) * 100);\n\nlet ruleRecommendation;\nif (ruleScore >= 75 && d.years_experience >= 1) ruleRecommendation = 'Shortlist';\nelse if (ruleScore < 25) ruleRecommendation = 'Reject';\nelse ruleRecommendation = 'Manual Review';\n\nconst finalScore = Math.round((ruleScore + d.ai.score) / 2);\nconst finalRecommendation = (ruleRecommendation === d.ai.recommendation)\n  ? ruleRecommendation\n  : 'Manual Review';\n\nreturn [{\n  json: {\n    ...d,\n    rule_matched_skills: matched,\n    rule_score: ruleScore,\n    rule_recommendation: ruleRecommendation,\n    final_score: finalScore,\n    final_recommendation: finalRecommendation,\n  }\n}];\n"
+      },
+      "id": "4488fb3c-14b9-45cb-96a1-33dce2425178",
+      "name": "Rule-Based + AI Assessment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "sajeelali307@gmail.com",
+        "toEmail": "flmg2773@gmail.com",
+        "subject": "=Decision needed: {{ $json.name }} — {{ $json.position }}",
+        "html": "=<p>A new candidate needs your review before any decision is finalized.</p><p><b>Candidate:</b> {{ $json.name }} ({{ $json.email }})<br><b>Position:</b> {{ $json.position }}<br><b>Self-reported experience:</b> {{ $json.years_experience }} yrs</p><p><b>AI score:</b> {{ $json.ai.score }} &nbsp; <b>Rule score:</b> {{ $json.rule_score }} &nbsp; <b>Combined:</b> {{ $json.final_score }}</p><p><b>AI recommendation:</b> {{ $json.ai.recommendation }} — {{ $json.ai.reason }}<br><b>Rule-based recommendation:</b> {{ $json.rule_recommendation }}<br><b>System suggestion:</b> {{ $json.final_recommendation }}</p><p>Please open the review form to make the final call.</p>",
+        "options": {}
+      },
+      "id": "92d7d185-9f83-4ca5-8545-9ba5642a729c",
+      "name": "Notify Approver",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        128
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "c53185c0-54d6-420a-b3a7-a08575f5fa81",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Candidate Review Needed",
+        "formDescription": "=Candidate: {{ $('On form submission').item.json['Full Name'] }}\nPosition: {{ $('On form submission').item.json['Position Applying For'] }}\n\nAI recommendation:({{ $('Rule-Based + AI Assessment').item.json.ai.recommendation }})\nScore:{{ $('Rule-Based + AI Assessment').item.json.final_score }}\nRule-based recommendation: {{ $('Rule-Based + AI Assessment').item.json.rule_recommendation }} (score {{ $('Rule-Based + AI Assessment').item.json.rule_score }})\nSystem suggestion:{{ $('Rule-Based + AI Assessment').item.json.final_recommendation }}\n\nAI reasoning: {{ $('Rule-Based + AI Assessment').item.json.ai.reason }}\n\nWhat is your final decision?",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Shortlist"
+                  },
+                  {
+                    "option": "Reject"
+                  },
+                  {
+                    "option": "Hold for Manual Review"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reviewer Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Notes (optional)",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a5e1dce5-a973-4e7e-a8e9-fb39de456a66",
+      "name": "Human Review",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        144,
+        128
+      ],
+      "webhookId": "ca6ea6a3-2532-4899-b180-dbc92c522eaf"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fdddc2ae-9ab3-4f53-85ea-f3fb6080384b",
+                    "leftValue": "={{ $json.Decision }}",
+                    "rightValue": "Shortlist",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1c80b7c8-b6e6-490f-97f6-e66b2b26274e",
+                    "leftValue": "={{ $json.Decision }}",
+                    "rightValue": "Reject",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "cf3318a2-6ac2-4970-a63c-b5350046f82e",
+      "name": "Route by Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        368,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "802350f5-4c0c-4b58-8e9b-cac26627fb4a",
+              "name": "email_subject",
+              "value": "=Great news about your application — {{ $('On form submission').item.json['Position Applying For'] }}",
+              "type": "string"
+            },
+            {
+              "id": "0a087edf-5492-4d6f-9e96-8d2a2889bfa2",
+              "name": "email_body",
+              "value": "=Hi {{ $('On form submission').item.json['Full Name'] }},\n\nThank you for applying for the {{ $('On form submission').item.json['Position Applying For'] }} role. We were impressed with your background and would like to move you forward to the next stage. Our team will be in touch shortly to schedule next steps.\n\nBest,\nPetalnex Recruitment Team",
+              "type": "string"
+            },
+            {
+              "id": "f2749619-e047-4e54-acae-c7d64b2b73c7",
+              "name": "final_status",
+              "value": "Shortlisted",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ddb92a3f-e6dc-4f5b-bdd7-06c65fc7f59b",
+      "name": "Prepare Shortlist Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d79688dd-7fed-47b4-8343-63f978f385ce",
+              "name": "email_subject",
+              "value": "=Update on your application —  {{ $('On form submission').item.json['Position Applying For'] }}",
+              "type": "string"
+            },
+            {
+              "id": "97e4e26d-ea7d-4f33-83d1-a595a9935f16",
+              "name": "email_body",
+              "value": "=Hi {{ $('On form submission').item.json['Full Name'] }},\n\nThank you for taking the time to apply for the  {{ $('On form submission').item.json['Position Applying For'] }} role. After careful review, we've decided not to move forward at this time. We appreciate your interest and encourage you to apply again in the future.\n\nBest,\nPetalnex Recruitment Team",
+              "type": "string"
+            },
+            {
+              "id": "ce6f44ad-ddf6-4276-bf58-fc07c52b8cff",
+              "name": "final_status",
+              "value": "Rejected",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "deaa5bd3-2f83-418d-833a-7a317ec5f867",
+      "name": "Prepare Reject Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "118faf85-0515-47ec-a154-6366a1b6ddc1",
+              "name": "email_subject",
+              "value": "=We're still reviewing your application — {{ $('On form submission').item.json['Position Applying For'] }}",
+              "type": "string"
+            },
+            {
+              "id": "f951275e-6529-45b1-b69e-05559e85f79d",
+              "name": "email_body",
+              "value": "=Hi {{ $('On form submission').item.json['Full Name'] }}\n\nThanks for your patience — your application for the {{ $json.position }} role is still under review and we'll follow up soon with an update.\n\nBest,\nPetalnex Recruitment Team",
+              "type": "string"
+            },
+            {
+              "id": "2876d84d-30f5-49f3-9844-5f88203bf5eb",
+              "name": "final_status",
+              "value": "Manual Review",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "af0bdb85-6c44-4ade-a48b-706af0d48771",
+      "name": "Prepare Hold Notice",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "sajeelali307@gmail.com",
+        "toEmail": "={{ $('Extract Candidate Information').item.json.email }}",
+        "subject": "={{ $json.email_subject }}",
+        "options": {}
+      },
+      "id": "732b0c7c-e4ea-46fd-bd1c-d75eea053d76",
+      "name": "Candidate Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        816,
+        128
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "2c78d2b6-de9b-4612-a465-ef08fee47efe",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "candidates",
+          "mode": "list",
+          "cachedResultName": "candidates"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $('Extract Candidate Information').item.json.email }}",
+            "final_status": "={{ $('Rule-Based + AI Assessment').item.json.final_recommendation }}",
+            "ai_score": "={{ $('Rule-Based + AI Assessment').item.json.ai.score }}",
+            "ai_recommendation": "={{ $('Rule-Based + AI Assessment').item.json.ai.recommendation }}",
+            "ai_reasoning": "={{ $('Rule-Based + AI Assessment').item.json.ai.reason }}",
+            "rule_score": "={{ $('Rule-Based + AI Assessment').item.json.rule_score }}",
+            "final_score": "={{ $('Rule-Based + AI Assessment').item.json.final_score }}",
+            "decided_by": "={{ $('Human Review').item.json['Reviewer Name'] }}",
+            "decision_notes": "={{ $('Human Review').item.json['Notes (optional)'] }}",
+            "decided_at": "={{ $now.toISO() }}",
+            "years_experience": 0
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "candidate_id",
+              "displayName": "candidate_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "position_applied",
+              "displayName": "position_applied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "years_experience",
+              "displayName": "years_experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "resume_text",
+              "displayName": "resume_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "final_status",
+              "displayName": "final_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ai_score",
+              "displayName": "ai_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ai_recommendation",
+              "displayName": "ai_recommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ai_reasoning",
+              "displayName": "ai_reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rule_score",
+              "displayName": "rule_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "final_score",
+              "displayName": "final_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decided_by",
+              "displayName": "decided_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decision_notes",
+              "displayName": "decision_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decided_at",
+              "displayName": "decided_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "034bd526-d572-4e72-8dd2-7812c1671bfe",
+      "name": "Update Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1040,
+        128
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "postgres": {
+          "id": "nOD6hje0JCtM0aeB",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d79688dd-7fed-47b4-8343-63f978f385ce",
+              "name": "email_subject",
+              "value": "=Update on your application —  {{ $('On form submission').item.json['Position Applying For'] }}",
+              "type": "string"
+            },
+            {
+              "id": "97e4e26d-ea7d-4f33-83d1-a595a9935f16",
+              "name": "email_body",
+              "value": "=Hi {{ $('On form submission').item.json['Full Name'] }},\n\nThank you for taking the time to apply for the  {{ $('On form submission').item.json['Position Applying For'] }} role. After careful review, we've decided not to move forward at this time. We appreciate your interest and encourage you to apply again in the future.\n\nBest,\nPetalnex Recruitment Team",
+              "type": "string"
+            },
+            {
+              "id": "ce6f44ad-ddf6-4276-bf58-fc07c52b8cff",
+              "name": "final_status",
+              "value": "Rejected",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "187312a2-8eb2-4fd9-88de-83edf98dbb14",
+      "name": "Prepare Reject Email1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -64,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "sajeelali307@gmail.com",
+        "toEmail": "={{ $('On form submission').item.json.Email }}",
+        "subject": "=Hi  {{ $('On form submission').item.json['Full Name'] }},",
+        "emailFormat": "text",
+        "text": "=Hi  your submitted form was invalid",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        160,
+        -80
+      ],
+      "id": "c15e09a0-b0e4-47e8-addb-2049bb16d94f",
+      "name": "Send an Email",
+      "webhookId": "16a43316-0daa-4ef8-b8b8-d03002526f17",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract Candidate Information",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Candidate Information": {
+      "main": [
+        [
+          {
+            "node": "valid submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "valid submission": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Reject Email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analysis + Skills Extraction": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Analysis + Skills Extraction",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate AI Output": {
+      "main": [
+        [
+          {
+            "node": "Rule-Based + AI Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rule-Based + AI Assessment": {
+      "main": [
+        [
+          {
+            "node": "Notify Approver",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Approver": {
+      "main": [
+        [
+          {
+            "node": "Human Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Review": {
+      "main": [
+        [
+          {
+            "node": "Route by Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Decision": {
+      "main": [
+        [
+          {
+            "node": "Prepare Shortlist Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Reject Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Hold Notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Shortlist Email": {
+      "main": [
+        [
+          {
+            "node": "Candidate Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reject Email": {
+      "main": [
+        [
+          {
+            "node": "Candidate Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Hold Notice": {
+      "main": [
+        [
+          {
+            "node": "Candidate Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Candidate Email": {
+      "main": [
+        [
+          {
+            "node": "Update Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis + Skills Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reject Email1": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c86c46f9-ea24-49f4-87cb-fcf287b711b3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "39aejuYfNiUfn0IQ",
+  "tags": []
+}
