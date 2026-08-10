@@ -1,0 +1,95 @@
+# Human Approval Mechanism
+
+## Purpose
+
+The recruitment automation uses a human-in-the-loop approval mechanism to ensure
+that AI recommendations do not independently determine the final hiring decision.
+
+The AI provides an assessment and recommendation, while an authorized human
+reviewer makes the final decision.
+
+## Approval Flow
+
+The human approval process consists of three main stages:
+
+1. Notify Approver
+2. Human Review
+3. Route by Decision
+
+### 1. Notify Approver
+
+After AI analysis and rule-based assessment, the workflow sends the assessment
+information to the authorized reviewer.
+
+The notification includes:
+
+- Candidate name
+- Candidate email
+- Position
+- Experience
+- AI score
+- Rule-based score
+- Combined score
+- AI recommendation
+- AI reasoning
+- Rule-based recommendation
+
+The reviewer is asked to review the information and make the final decision.
+
+### 2. Human Review
+
+The `Human Review` node presents the candidate assessment to the authorized
+reviewer.
+
+The reviewer must provide:
+
+- Reviewer name
+- Final decision
+- Optional decision notes
+
+The available decisions are:
+
+- `Shortlist`
+- `Reject`
+- `Hold for Manual Review`
+
+The AI recommendation is only an input to the review process. It does not
+automatically determine the final decision.
+
+### 3. Route by Decision
+
+The `Route by Decision` Switch node uses the decision submitted by the human
+reviewer.
+
+The workflow then follows the appropriate path:
+
+- Shortlist → Shortlist email
+- Reject → Rejection email
+- Hold for Manual Review → Hold notification
+
+The selected human decision is then used to complete the recruitment process
+and update the candidate record.
+
+## Human Authority
+
+The workflow follows the principle:
+
+> AI assists; authorized humans make the final hiring decision.
+
+Even if the AI recommends `Shortlist`, the human reviewer can choose `Reject`
+or `Hold for Manual Review`.
+
+Similarly, an AI `Reject` recommendation can be overridden by the human reviewer.
+
+This prevents an AI recommendation from becoming an automatic hiring decision.
+
+## Example
+
+For example:
+
+AI assessment:
+
+```text
+AI Score: 86
+AI Recommendation: Shortlist
+Rule Score: 75
