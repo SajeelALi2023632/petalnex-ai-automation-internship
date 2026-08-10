@@ -1,0 +1,529 @@
+# AI-Assisted Recruitment Automation
+
+An **n8n-based AI-assisted recruitment workflow** that automates
+candidate intake, validation, database storage, resume analysis, skills
+extraction, rule-based assessment, human approval, candidate
+communication, and final database updates.
+
+> **Important:** AI assists with screening and recommendation, but the
+> final recruitment decision is made by an authorized human reviewer.
+
+##  Project Overview
+
+The workflow implements the following recruitment pipeline:
+
+``` text
+Candidate Application
+        ↓
+Extract & Validate Candidate Information
+        ↓
+Validate Submission
+        ↓
+Store Candidate in PostgreSQL
+        ↓
+AI Analysis + Skills Extraction
+        ↓
+Parse & Validate AI Output
+        ↓
+Rule-Based + AI Assessment
+        ↓
+Notify Human Approver
+        ↓
+Human Review
+        ↓
+Route by Human Decision
+   ↙        ↓        ↘
+Shortlist   Reject   Hold/Manual Review
+   ↘        ↓        ↙
+       Candidate Email
+             ↓
+       Update Database
+```
+
+## ✨ Features
+
+-   Candidate application form built directly in n8n
+-   Deterministic input validation before an AI call
+-   PostgreSQL persistence for candidate records
+-   Google Gemini-based resume analysis
+-   Structured skills and experience extraction
+-   AI fit score from 0--100
+-   AI recommendation:
+    -   `Shortlist`
+    -   `Reject`
+    -   `Manual Review`
+-   Deterministic rule-based skill matching
+-   Combined AI + rule-based scoring
+-   Automatic escalation when AI and rule-based recommendations disagree
+-   AI-output parsing and validation
+-   Automatic fallback to `Manual Review` when AI output is invalid
+-   Human-in-the-loop approval
+-   Separate candidate emails for shortlist, rejection, and hold/manual
+    review
+-   Final assessment and reviewer information stored in PostgreSQL
+-   Retry handling for AI and approver email operations
+
+## 🧩 Workflow Nodes
+
+### 1. On form submission
+
+The workflow starts with an n8n Form Trigger called **Candidate
+Application**.
+
+The form collects:
+
+-   Full Name
+-   Email
+-   Years of Experience
+-   Resume / CV text
+-   Position Applying For
+-   LinkedIn URL (optional)
+
+### 2. Extract Candidate Information
+
+A Code node performs deterministic data cleaning and validation.
+
+It:
+
+-   trims and normalizes the candidate name
+-   converts the email to lowercase
+-   converts experience to a numeric value
+-   cleans resume text
+-   stores the LinkedIn URL
+-   records the submission timestamp
+-   validates required fields
+-   checks the email format
+-   checks that the resume contains enough text
+
+No AI is used in this step.
+
+### 3. valid submission
+
+An IF node checks the `is_valid` flag.
+
+Only valid submissions continue to database storage and AI processing.
+
+### 4. Insert rows in a table
+
+The candidate is inserted into the PostgreSQL `candidates` table.
+
+The database stores candidate information and initializes the
+recruitment status as pending review.
+
+### 5. AI Analysis + Skills Extraction
+
+This node sends the candidate information and resume to Google Gemini.
+
+The prompt asks the model to return structured information containing:
+
+``` json
+{
+  "skills": [],
+  "experience_years": 0,
+  "score": 0,
+  "recommendation": "Shortlist | Reject | Manual Review",
+  "reason": "..."
+}
+```
+
+The current example evaluates these core skills:
+
+-   JavaScript
+-   SQL
+-   REST APIs
+-   Problem Solving
+
+The AI is explicitly instructed that it **does not make the final hiring
+decision**.
+
+### 6. Google Gemini Chat Model
+
+Provides the Gemini language model used by the AI analysis node.
+
+The workflow currently uses:
+
+``` text
+models/gemini-3.1-flash-lite
+```
+
+Retry handling is enabled for temporary model/API failures.
+
+### 7. Parse & Validate AI Output
+
+AI output is treated as untrusted data.
+
+This Code node:
+
+1.  removes possible Markdown code fences
+2.  attempts to parse JSON
+3.  validates required fields
+4.  validates the recommendation against the allowed values
+
+If parsing or validation fails, the workflow creates a safe fallback:
+
+``` text
+Recommendation: Manual Review
+Score: 0
+```
+
+This prevents malformed AI output from silently continuing through the
+workflow.
+
+### 8. Rule-Based + AI Assessment
+
+This node combines deterministic business rules with the AI assessment.
+
+The rule engine checks the four configured core skills.
+
+The rule score is calculated as:
+
+``` text
+Matched Required Skills
+----------------------- × 100
+Total Required Skills
+```
+
+The current rules are:
+
+``` text
+Rule score >= 75 AND experience >= 1 year
+    → Shortlist
+
+Rule score < 25
+    → Reject
+
+Otherwise
+    → Manual Review
+```
+
+The combined score is calculated as:
+
+``` text
+Final Score = (Rule Score + AI Score) / 2
+```
+
+If the AI recommendation and rule-based recommendation disagree, the
+workflow automatically escalates the candidate to:
+
+``` text
+Manual Review
+```
+
+### 9. Notify Approver
+
+The workflow sends the assessment to the human reviewer.
+
+The notification contains:
+
+-   candidate name and email
+-   position
+-   self-reported experience
+-   AI score
+-   rule score
+-   combined score
+-   AI recommendation
+-   AI reasoning
+-   rule-based recommendation
+-   system suggestion
+
+The reviewer is explicitly asked to make the final decision.
+
+### 10. Human Review
+
+This is the human-in-the-loop stage.
+
+The reviewer receives a form containing the candidate and assessment
+information and chooses:
+
+-   `Shortlist`
+-   `Reject`
+-   `Hold for Manual Review`
+
+The reviewer also provides their name and can add decision notes.
+
+The workflow therefore does not allow the AI to independently make the
+final hiring decision.
+
+### 11. Route by Decision
+
+A Switch node routes the workflow according to the **human review
+decision**.
+
+``` text
+Shortlist
+   ↓
+Prepare Shortlist Email
+
+Reject
+   ↓
+Prepare Reject Email
+
+Hold for Manual Review
+   ↓
+Prepare Hold Notice
+```
+
+### 12. Prepare Shortlist Email
+
+Creates the candidate email for a successful shortlist decision.
+
+### 13. Prepare Reject Email
+
+Creates a professional rejection email for a rejected candidate.
+
+### 14. Prepare Hold Notice
+
+Creates an email informing the candidate that their application remains
+under review.
+
+### 15. Candidate Email
+
+Sends the prepared email to the candidate using the email address
+submitted in the application.
+
+### 16. Update Database
+
+The final database node records the assessment and review information,
+including fields such as:
+
+-   AI score
+-   AI recommendation
+-   AI reasoning
+-   rule score
+-   final score
+-   reviewer
+-   decision notes
+-   decision timestamp
+-   final status
+
+This provides a persistent record of the recruitment workflow.
+
+## 🛡️ Error Handling
+
+The workflow contains several safeguards:
+
+### Input validation
+
+Invalid or incomplete applications are detected before the AI call.
+
+### AI output validation
+
+Gemini output is parsed and checked before being used.
+
+### AI failure fallback
+
+If the AI response cannot be parsed or validated, the candidate is
+automatically routed toward `Manual Review`.
+
+### Recommendation disagreement
+
+If deterministic rules and AI disagree, the system does not silently
+choose one. It escalates the candidate for human review.
+
+### Retry handling
+
+Retry behavior is configured for the Gemini model and approver
+notification operations.
+
+## 👤 Human-in-the-Loop Design
+
+The core design principle is:
+
+``` text
+AI Recommendation ≠ Final Hiring Decision
+```
+
+The AI provides:
+
+-   extracted skills
+-   estimated relevant experience
+-   fit score
+-   recommendation
+-   reasoning
+
+The deterministic rule engine provides an additional assessment.
+
+The human reviewer then makes the actual decision.
+
+This design helps prevent an automated model recommendation from
+becoming an uncontrolled hiring decision.
+
+## 🗄️ Database
+
+The workflow uses PostgreSQL for persistent candidate storage.
+
+The workflow expects a `candidates` table containing
+candidate/application information and assessment fields such as:
+
+``` text
+name
+email
+position
+years_experience
+resume_text
+linkedin_url
+submitted_at
+final_status
+ai_score
+ai_recommendation
+ai_reason
+rule_score
+final_score
+decided_by
+decision_notes
+decided_at
+```
+
+The exact PostgreSQL credential is **not included in this repository**.
+Configure your own n8n PostgreSQL credential before running the
+workflow.
+
+## 🔐 Credentials & Security
+
+Do **not** commit any of the following to GitHub:
+
+-   PostgreSQL passwords
+-   Supabase database passwords
+-   Gemini API keys
+-   SMTP/email passwords
+-   n8n credential exports containing secrets
+-   private candidate information
+
+The workflow JSON should be reviewed before publishing to ensure that no
+credentials or sensitive candidate data are embedded.
+
+For a Supabase PostgreSQL deployment, configure the PostgreSQL
+credential in n8n using your own project connection details. If the
+direct database endpoint is not reachable from your n8n environment, use
+the appropriate Supabase connection pooler.
+
+## 🚀 Setup
+
+### 1. Install / run n8n
+
+Run n8n using your preferred deployment method.
+
+### 2. Import the workflow
+
+In n8n:
+
+``` text
+Workflows
+→ Import from File
+→ Select AI-Assisted Recruitment Automation.json
+```
+
+### 3. Configure PostgreSQL
+
+Create a PostgreSQL credential in n8n and connect it to your
+Supabase/PostgreSQL database.
+
+Make sure the `candidates` table contains the fields required by the
+workflow.
+
+### 4. Configure Google Gemini
+
+Create/configure the Google Gemini credential used by the:
+
+``` text
+Google Gemini Chat Model
+```
+
+### 5. Configure email
+
+Configure the email credential used by:
+
+``` text
+Notify Approver
+Candidate Email
+```
+
+### 6. Configure the human review form
+
+Verify the review form URL and reviewer access before activating the
+workflow.
+
+### 7. Test with sample data
+
+Use a test candidate rather than real applicant data during development.
+
+Recommended test cases:
+
+1.  Valid candidate with strong skill matches
+2.  Candidate with weak skill matches
+3.  Candidate where AI and rule-based recommendations disagree
+4.  Invalid email
+5.  Very short resume
+6.  Malformed/unexpected AI output
+
+## 🧪 Example Output
+
+A successful AI assessment can produce data in this structure:
+
+``` json
+{
+  "candidate": "Example Candidate",
+  "skills": [
+    "JavaScript",
+    "SQL",
+    "REST APIs"
+  ],
+  "experience_years": 2,
+  "score": 82,
+  "recommendation": "Shortlist",
+  "reason": "The candidate demonstrates strong alignment with the required technical skills."
+}
+```
+
+The rule engine then independently evaluates the required skills and
+combines its result with the AI score.
+
+
+
+
+## 🎥 Demo Flow
+
+For a 2--5 minute demonstration, show one candidate moving through the
+workflow:
+
+``` text
+1. Submit candidate application
+2. Show validation
+3. Show PostgreSQL record
+4. Show Gemini analysis
+5. Show AI output validation
+6. Show rule-based + AI assessment
+7. Show approver notification
+8. Make a human decision
+9. Show candidate email
+10. Show updated database record
+```
+
+The key point to demonstrate is that **AI assists the recruitment
+process while the authorized human retains the final decision**.
+
+##  Assignment Deliverables
+
+This project addresses the requested deliverables:
+
+-   [x] Full n8n workflow JSON
+-   [x] AI prompt
+-   [x] Human approval mechanism
+-   [x] Error handling
+-   [x] Documentation / README
+-   [x] 2--5 minute demonstration
+
+##  Limitations
+
+This is an internship/project demonstration workflow and should not be
+treated as a production hiring system without additional security,
+privacy, compliance, audit, bias/fairness, access-control, and
+operational safeguards.
+
+The AI score and recommendation are assistive signals, not authoritative
+hiring decisions.
+
+##  License
+
+This project is intended for educational/internship use. Add the
+appropriate license here if the repository will be distributed publicly.
