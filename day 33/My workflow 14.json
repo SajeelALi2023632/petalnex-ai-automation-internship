@@ -1,0 +1,432 @@
+{
+  "name": "My workflow 14",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Candidate Application",
+        "formDescription": "Apply for an open role at Petalnex. All fields are required unless marked optional.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Years of Experience",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Resume / CV (paste as text)",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Position Applying For",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "LinkedIn URL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -576,
+        -144
+      ],
+      "id": "3d183b11-7e4b-4dd2-8a39-f9da5cf7792b",
+      "name": "On form submission",
+      "webhookId": "fb7f0596-c3ba-41ce-8636-fbf95583c94e"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deterministic normalization of the raw form submission.\n// No AI involved here on purpose — this is pure data hygiene.\nconst f = $input.item.json;\n\nconst name = String(f['Full Name'] || '').trim();\nconst email = String(f['Email'] || '').trim().toLowerCase();\nconst position = String(f['Position Applying For'] || '').trim();\nconst yearsRaw = f['Years of Experience'];\nconst years = Number.isFinite(Number(yearsRaw)) ? Number(yearsRaw) : 0;\nconst resumeText = String(f['Resume / CV (paste as text)'] || '').replace(/\\s+/g, ' ').trim();\nconst linkedin = String(f['LinkedIn URL'] || '').trim();\n\n// Basic validation — deterministic error handling before anything costs an AI call\nconst errors = [];\nif (!name) errors.push('Missing name');\nif (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) errors.push('Invalid email');\nif (!position) errors.push('Missing position');\nif (resumeText.length < 30) errors.push('Resume text too short to analyze');\n\nreturn [{\n  json: {\n    name, email, position, years_experience: years,\n    resume_text: resumeText, linkedin_url: linkedin,\n    submitted_at: new Date().toISOString(),\n    validation_errors: errors,\n    is_valid: errors.length === 0,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        -144
+      ],
+      "id": "3c21b187-1d89-4abf-a08e-6b2135d1d304",
+      "name": "Extract Candidate Information"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "62259efb-aa7a-4f6a-9467-1ffc47c0ebb8",
+              "leftValue": "={{ $json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -160,
+        -144
+      ],
+      "id": "b1cf04fe-8a42-4d34-b8e6-faaa290f7ed0",
+      "name": "valid submission"
+    },
+    {
+      "parameters": {
+        "fromEmail": "sajeelali307@gmail.com",
+        "toEmail": "={{ $('On form submission').item.json.Email }}",
+        "subject": "=Hi  {{ $('On form submission').item.json['Full Name'] }},",
+        "emailFormat": "text",
+        "text": "=Hi  your submitted form was invalid",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        112
+      ],
+      "id": "28472303-5dd6-4101-855c-964f0ed56e16",
+      "name": "Send an Email",
+      "webhookId": "16a43316-0daa-4ef8-b8b8-d03002526f17",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d79688dd-7fed-47b4-8343-63f978f385ce",
+              "name": "email_subject",
+              "value": "=Update on your application —  {{ $('On form submission').item.json['Position Applying For'] }}",
+              "type": "string"
+            },
+            {
+              "id": "97e4e26d-ea7d-4f33-83d1-a595a9935f16",
+              "name": "email_body",
+              "value": "=Hi {{ $('On form submission').item.json['Full Name'] }},\n\nThank you for taking the time to apply for the  {{ $('On form submission').item.json['Position Applying For'] }} role. After careful review, we've decided not to move forward at this time. We appreciate your interest and encourage you to apply again in the future.\n\nBest,\nPetalnex Recruitment Team",
+              "type": "string"
+            },
+            {
+              "id": "ce6f44ad-ddf6-4276-bf58-fc07c52b8cff",
+              "name": "final_status",
+              "value": "Rejected",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "1dc89d9b-a345-48e0-861f-02dee7ae1abe",
+      "name": "Prepare Rejected Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -144,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "candidates",
+          "mode": "list",
+          "cachedResultName": "candidates"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.email }}",
+            "resume_text": "={{ $json.resume_text }}",
+            "linkedin_url": "={{ $json.linkedin_url }}",
+            "submitted_at": "={{ $json.submitted_at }}",
+            "ai_score": 0,
+            "full_name": "={{ $json.name }}",
+            "years_of_experience": "={{ $json.years_experience }}",
+            "position_applying_for": "={{ $json.position }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "years_of_experience",
+              "displayName": "years_of_experience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "resume_text",
+              "displayName": "resume_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "position_applying_for",
+              "displayName": "position_applying_for",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "form_mode",
+              "displayName": "form_mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ai_score",
+              "displayName": "ai_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ai_summary",
+              "displayName": "ai_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "skills_extracted",
+              "displayName": "skills_extracted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "recruiter_notes",
+              "displayName": "recruiter_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "decision_at",
+              "displayName": "decision_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        112,
+        -160
+      ],
+      "id": "96cab27c-dded-4d87-bb57-195eda21562e",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "nOD6hje0JCtM0aeB",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Extract Candidate Information",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Candidate Information": {
+      "main": [
+        [
+          {
+            "node": "valid submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "valid submission": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Rejected Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Rejected Email": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5a8309d8-e5a6-4d4e-983c-3115ec7bfefa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "aWVDl02lXjILditD",
+  "tags": []
+}
