@@ -1,0 +1,362 @@
+{
+  "name": "My workflow 4",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        16
+      ],
+      "id": "5f43e083-08db-4d89-a2ef-c8655561959b",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 80,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "id": "67de1c83-af4a-4af8-9377-e227fb84f740"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "excellent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f88f8c8a-e1db-4a8c-bbe8-b235165273c2",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 60,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "good"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "08375f09-ae09-490c-9708-263301ade364",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "need improvement"
+            }
+          ]
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -96,
+        16
+      ],
+      "id": "46e68208-3548-4a6f-ac62-90e506039280",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        512,
+        32
+      ],
+      "id": "4c33bc35-3c2c-4c7a-8283-2ef92efccc71",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "68856226-ab53-41b4-a704-5fc1f73b57b8",
+              "name": "group",
+              "value": "good",
+              "type": "string"
+            },
+            {
+              "id": "41bd5584-8fac-4b3d-b2f2-16159f13378a",
+              "name": "next action",
+              "value": "Send performance review notes",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "name, score",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        32
+      ],
+      "id": "3fa71952-33b9-4c79-87cf-2b8c23666361",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e6a3a9f-d67e-4601-a09a-972852198178",
+              "name": "group",
+              "value": "excellent",
+              "type": "string"
+            },
+            {
+              "id": "c530bc73-0ff3-4725-850d-917ac0feeb6f",
+              "name": "next action",
+              "value": "Send performance review notes",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "name, score",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        -112
+      ],
+      "id": "db0c4274-4a04-43dc-b760-703d216a040b",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d0f05a05-0bae-4e2b-862e-80c3877825cc",
+              "name": "group",
+              "value": "need improvement",
+              "type": "string"
+            },
+            {
+              "id": "a823fd01-22b6-4ad9-8327-1219d8ecaddf",
+              "name": "next action",
+              "value": "Send performance review notes",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "name, score",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        192
+      ],
+      "id": "d181c7ae-922f-4f8d-87bc-6eaf049512a5",
+      "name": "Edit Fields2"
+    }
+  ],
+  "pinData": {
+    "When clicking ‘Execute workflow’": [
+      {
+        "json": {
+          "name": "Alice Johnson",
+          "score": 87
+        }
+      },
+      {
+        "json": {
+          "name": "Brian Chen",
+          "score": 62
+        }
+      },
+      {
+        "json": {
+          "name": "Carla Mendes",
+          "score": 95
+        }
+      },
+      {
+        "json": {
+          "name": "David Okafor",
+          "score": 45
+        }
+      },
+      {
+        "json": {
+          "name": "Elena Petrova",
+          "score": 78
+        }
+      },
+      {
+        "json": {
+          "name": "Farid Hassan",
+          "score": 91
+        }
+      },
+      {
+        "json": {
+          "name": "Grace Kim",
+          "score": 33
+        }
+      },
+      {
+        "json": {
+          "name": "Hassan Ali",
+          "score": 69
+        }
+      },
+      {
+        "json": {
+          "name": "Isabel Cruz",
+          "score": 100
+        }
+      },
+      {
+        "json": {
+          "name": "Jack Thompson",
+          "score": 56
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2bcb3728-86d5-4637-accf-668939ebffd9",
+  "meta": {
+    "instanceId": "19b20340ed07e1c6164b16b51f151f17469e202d38987bd410fe8f4fc47ae4b1"
+  },
+  "nodeGroups": [],
+  "id": "iABxGNbALGZMjqeu",
+  "tags": []
+}
