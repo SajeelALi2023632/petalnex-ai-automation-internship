@@ -1,1 +1,169 @@
+# AI-Assisted Recruitment Automation
 
+**Final Capstone Project — Week 6, AI Automation Internship**
+**Petalnex Pvt. Ltd.** | Intern: Sajeel Ali
+
+An end-to-end n8n workflow that screens job applications, scores candidate fit using Google Gemini, cross-checks that score against deterministic rules, and routes every final decision through mandatory human review before a candidate is notified or the database is updated.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Technologies](#technologies)
+- [Repository Structure](#repository-structure)
+- [How It Works](#how-it-works)
+- [AI Integration](#ai-integration)
+- [Error Handling](#error-handling)
+- [Security](#security)
+- [Testing](#testing)
+- [Setup](#setup)
+- [Business Benefits](#business-benefits)
+- [Limitations](#limitations)
+- [Future Improvements](#future-improvements)
+- [Project Timeline](#project-timeline)
+
+---
+
+## Overview
+
+Manually screening job applications is slow and inconsistent — recruiters spend significant time reading resumes, extracting skills, and judging fit, with no fixed rubric and no structured audit trail.
+
+This project automates that pipeline end-to-end:
+
+**Form submission → validation → AI skills scoring → rule-based cross-check → human review → decision routing → candidate notification → database update**
+
+The core design principle: **AI is used only where reasoning and judgment are genuinely needed.** Everything else — validation, storage, routing, notification — is deterministic. And no candidate is ever finally shortlisted or rejected without an explicit human decision, even when the AI is confident.
+
+## Architecture
+
+![Architecture Diagram](./docs/Architecture-Diagram.png)
+
+Seven stages carry a candidate from submission to a recorded, human-approved outcome. Teal stages are AI-driven; every other stage is deterministic.
+
+Full breakdown of components, integrations, and design rationale: [`docs/Component-Credentials-List.docx`](./docs/Component-Credentials-List.docx)
+
+## Technologies
+
+| Layer | Technology | Role |
+|---|---|---|
+| Orchestration | [n8n](https://n8n.io) (self-hosted) | Form Trigger, Code, If, Switch, Wait, Postgres, Send Email nodes |
+| AI / LLM | Google Gemini | Skills extraction, fit scoring, structured reasoning |
+| Data storage | Supabase (Postgres) | Candidate records, scores, decisions, full audit trail |
+| Notifications | Gmail SMTP | Recruiter approval email + candidate outcome email |
+
+## Repository Structure
+
+```
+├── docs/
+│   ├── Project-Requirement-Document.pdf     # Problem statement, pain points, solution outline
+│   ├── Architecture-Diagram.png / .pdf      # End-to-end system architecture
+│   ├── Component-Credentials-List.docx      # Full component, credential, failure & security breakdown
+│   ├── Test-Cases.docx                      # 20 test cases across 6 categories, with results
+│   └── Final-Presentation.pptx              # Capstone presentation deck
+├── workflows/
+│   └── AI-Assisted-Recruitment-Automation.json   # Final, hardened n8n workflow (import-ready)
+├── reports/
+│   └── Daily-Progress-Report-Day31.docx ... Day36.docx
+└── README.md
+```
+
+## How It Works
+
+1. **Form Trigger** — candidate submits name, email, position, years of experience, resume/CV text, and LinkedIn URL
+2. **Extract & Validate** — a deterministic Code node normalizes the submission (trims strings, coerces numeric fields, lowercases email); an If node blocks incomplete submissions before any AI call is made
+3. **Insert** — the validated candidate is stored in Supabase immediately, with status `pending`
+4. **AI Analysis** — Google Gemini extracts skills from the resume text and produces a fit score with written reasoning, not just a number
+5. **Parse & Validate AI Output** — the AI's response is parsed and checked for structure before anything downstream trusts it
+6. **Rule-Based Assessment** — a separate, deterministic rule engine independently scores the same candidate against required skills; if the rule engine and the AI disagree, the case is escalated to **Manual Review** rather than either being trusted blindly
+7. **Human Review** — the recruiter receives an email summary with both scores and the AI's reasoning, and the workflow pauses on a Wait node until they submit a decision (Shortlist / Reject / Hold for Manual Review) with their name and optional notes
+8. **Route by Decision** — a Switch node routes the candidate based on the recruiter's actual choice, not the AI's original suggestion
+9. **Notify & Update** — the candidate receives an outcome email, and Supabase is updated with the final status, the reviewer's name, decision notes, and a timestamp — the human's real decision, recorded for audit
+
+## AI Integration
+
+Google Gemini is the only non-deterministic component in the pipeline, and its output is never trusted directly:
+
+- Structured output (score, recommendation, reasoning) is parsed and validated before use
+- A parallel rule-based score cross-checks the AI's recommendation
+- Any disagreement between the two is escalated to a human, never silently resolved
+- The final `final_status` recorded in the database reflects the **human reviewer's actual decision**, not the AI's suggestion — an early version of this workflow had a bug where it recorded the AI's suggestion instead; this was found and fixed during testing (see [Error Handling](#error-handling))
+
+## Error Handling
+
+Found through a structured 20-case test pass and fixed at the root cause, not patched around:
+
+- Deterministic field validation runs before any AI call, so bad input never costs an API call
+- AI output is parsed and validated before any downstream node uses it
+- Switch node fallback routing catches decision values that don't match a defined rule
+- **5 real bugs** found via a full workflow audit and fixed:
+  - `position_applied` was mapped to `years_experience` in the Insert node
+  - `years_experience` was hardcoded to `0` in the Update Database node, silently overwriting the correct value on every run
+  - The candidate outcome email had no body — only a subject line
+  - The invalid-submission rejection email used a generic hardcoded message instead of its prepared content
+  - `final_status` recorded the AI's suggestion instead of the human reviewer's actual decision, with a values mismatch between the Human Review form and the database constraint
+
+## Security
+
+- All API keys and credentials (Gemini, Supabase, Gmail SMTP) live in n8n's built-in credential store — never hardcoded in a node
+- Resume and name fields were tested with script and SQL injection payloads (e.g. `<img src=x onerror=alert(1)>`, `'; DROP TABLE candidates; --`) and confirmed to be stored as plain text only
+- Verified that error messages, emails, and logs never expose API keys, database passwords, or SMTP credentials, including during intentionally induced credential failures
+- Only fields required for evaluation are stored; access is restricted to authorized accounts
+
+## Testing
+
+20 test cases across 6 required categories — normal, missing data, invalid data, external failure, AI failure, and security — exceeding the minimum of 15. Full results, inputs, and screenshots: [`docs/Test-Cases.docx`](./docs/Test-Cases.docx)
+
+| Category | Cases | Focus |
+|---|---|---|
+| Normal | 3 | Strong / weak / borderline candidates end-to-end |
+| Missing Data | 4 | Required-field validation |
+| Invalid Data | 4 | Malformed email, non-numeric input, oversized payloads |
+| External Failure | 3 | Gemini, SMTP, and Supabase credential failures |
+| AI Failure | 3 | Prompt injection, ambiguous input, non-English input |
+| Security | 3 | XSS/SQL injection payloads, credential leakage check |
+
+## Setup
+
+1. **n8n** — self-hosted via `npx n8n`. On Windows, set `N8N_RESTRICT_FILE_ACCESS_TO` in the same PowerShell session before launching.
+2. **Supabase** — create a project, run the table schema (see `docs/Component-Credentials-List.docx` for the full schema and check constraints), and connect via the **Transaction pooler** (port `6543`) — the Session pooler has been unreliable with SSL certificate chain errors in this project.
+3. **Google Gemini** — obtain an API key from AI Studio; verify the model name against the `/models` endpoint before relying on it, as availability varies by key and over time.
+4. **Gmail SMTP** — use an app password credential, not full OAuth2.
+5. Import [`workflows/AI-Assisted-Recruitment-Automation.json`](./workflows/AI-Assisted-Recruitment-Automation.json) into n8n and connect each credential.
+
+## Business Benefits
+
+- **Faster screening** — AI scoring turns a manual read into seconds of structured analysis
+- **Consistent scoring** — every candidate is judged against the same rubric, every time
+- **Full audit trail** — every decision, human or AI, is timestamped and recorded
+- **Recruiter stays in control** — AI assists judgment; it never replaces the final human call
+
+## Limitations
+
+- The rule engine's required-skills list is fixed per role, not yet configurable per job posting
+- Email is the only match key used to update an existing candidate record
+- Gemini's free-tier quota limits testing volume within a single session
+- No automated interview-scheduling step yet — routing currently ends at notification
+
+## Future Improvements
+
+- Configurable, per-role skill requirements instead of a fixed list
+- An interview-scheduling step triggered after Shortlist, via a calendar API
+- A row-level uniqueness constraint on email to prevent duplicate candidate records
+- A lightweight recruiter dashboard built over the Supabase audit trail
+
+## Project Timeline
+
+| Day | Focus | Key Output |
+|---|---|---|
+| 31 | Requirement Analysis | Project Requirement Document |
+| 32 | Solution Architecture | Architecture diagram + component list |
+| 33 | Core Build | Trigger, validation, storage — tested end-to-end |
+| 34 | AI, Integration & Notifications | Gemini scoring, human approval, routing — tested end-to-end |
+| 35 | Testing & Optimization | 20-case test pass, 5 bugs found and fixed, hardened workflow |
+| 36 | Final Presentation & Demo | Live demo, final presentation, this repository |
+
+---
+
+*Petalnex Pvt. Ltd. — AI Automation Internship*
