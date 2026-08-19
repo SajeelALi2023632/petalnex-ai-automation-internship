@@ -1,0 +1,675 @@
+{
+  "name": "AI Customer Support Automation\"",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Support Request",
+        "formDescription": "Submit a support request for your Petalnex project. All fields are required unless marked optional.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Client Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Project Name"
+            },
+            {
+              "fieldLabel": "Message",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -432,
+        -240
+      ],
+      "id": "d59a1ac9-27ce-44ac-900d-6cd551829438",
+      "name": "Support Request",
+      "webhookId": "4e8ff345-beac-4426-a1e4-71105e42f0a3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deterministic normalization of the raw form submission.\n// No AI involved here on purpose — this is pure data hygiene.\nconst f = $input.item.json;\n\nconst clientName = String(f['Client Name'] || '').trim();\nconst clientEmail = String(f['Email'] || '').trim().toLowerCase();\nconst projectName = String(f['Project Name'] || '').trim();\nconst message = String(f['Message'] || '').replace(/\\s+/g, ' ').trim();\n\n// Basic validation — deterministic error handling before anything costs an AI call\nconst errors = [];\nif (!clientName) errors.push('Missing client name');\nif (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(clientEmail)) errors.push('Invalid email');\nif (message.length < 15) errors.push('Message too short to classify');\n\nreturn [{\n  json: {\n    client_name: clientName,\n    client_email: clientEmail,\n    project_name: projectName,\n    message: message,\n    submitted_at: new Date().toISOString(),\n    validation_errors: errors,\n    is_valid: errors.length === 0,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        -240
+      ],
+      "id": "98e61582-53fa-448a-8a56-117cd24c3654",
+      "name": "Extract Ticket Information"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3ca3d9cf-e764-44da-a12e-cce5dce07dd1",
+              "leftValue": "={{ $json.is_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        16,
+        -240
+      ],
+      "id": "bf2ba24e-deea-4ad2-8a92-34e866832c81",
+      "name": "valid submission"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "support_tickets",
+          "mode": "list",
+          "cachedResultName": "support_tickets"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "kb_context_found": false,
+            "client_name": "={{ $('Extract Ticket Information').item.json.client_name }}",
+            "client_email": "={{ $('Extract Ticket Information').item.json.client_email }}",
+            "project_name": "={{ $('Extract Ticket Information').item.json.project_name }}",
+            "message": "={{ $('Extract Ticket Information').item.json.message }}",
+            "submitted_at": "={{ $('Extract Ticket Information').item.json.submitted_at }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_email",
+              "displayName": "client_email",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "project_name",
+              "displayName": "project_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sentiment",
+              "displayName": "sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sentiment_score",
+              "displayName": "sentiment_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "suggested_response",
+              "displayName": "suggested_response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "kb_context_found",
+              "displayName": "kb_context_found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reviewed_by",
+              "displayName": "reviewed_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "review_notes",
+              "displayName": "review_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reviewed_at",
+              "displayName": "reviewed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        272,
+        -256
+      ],
+      "id": "b3b6327a-890a-441d-9f46-264644ce9e5f",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "nOD6hje0JCtM0aeB",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a support ticket classifier for Petalnex, a software/AI/automation services company. Analyze this client message and respond ONLY with valid JSON, no other text.\n\nClient message: {{ $json.message }}\nProject: {{ $json.project_name }}\n\nClassify into exactly one category: \"Technical Issue\", \"Integration/API\", \"Project Status\", \"Bug Report\", \"Feature Request\", \"Billing\", or \"General Inquiry\".\n\nAnalyze sentiment as: \"Frustrated\", \"Neutral\", or \"Positive\", with a sentiment_score from 0 (very negative) to 100 (very positive).\n\nRespond in this exact JSON shape:\n{\n  \"category\": \"...\",\n  \"sentiment\": \"...\",\n  \"sentiment_score\": 0,\n  \"reasoning\": \"one sentence explaining the classification\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -368,
+        0
+      ],
+      "id": "9c66650e-dfe4-4c30-8b49-e067a89664ec",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -368,
+        208
+      ],
+      "id": "52c3d8ba-10b3-492a-93a8-bee8983bcf7a",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2iuYFOKF0RtEigVq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parses and validates the AI's classification/sentiment output before anything downstream trusts it.\nconst raw = $input.item.json.text || $input.item.json.output || '';\nlet parsed;\ntry {\n  const jsonMatch = raw.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);\n} catch (e) {\n  parsed = null;\n}\n\nconst validCategories = ['Technical Issue', 'Integration/API', 'Project Status', 'Bug Report', 'Feature Request', 'Billing', 'General Inquiry'];\nconst validSentiments = ['Frustrated', 'Neutral', 'Positive'];\n\nconst isValid = parsed\n  && validCategories.includes(parsed.category)\n  && validSentiments.includes(parsed.sentiment)\n  && Number.isFinite(Number(parsed.sentiment_score));\n\nreturn [{\n  json: {\n    ...$('valid submission').item.json,\n    ai_category: isValid ? parsed.category : 'General Inquiry',\n    ai_sentiment: isValid ? parsed.sentiment : 'Neutral',\n    ai_sentiment_score: isValid ? Number(parsed.sentiment_score) : 50,\n    ai_reasoning: isValid ? parsed.reasoning : 'AI output could not be parsed; defaulted to General Inquiry.',\n    ai_parse_failed: !isValid,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "83469ff1-f6fd-46a6-837b-ebb57cecc923",
+      "name": "Parse & Validate AI Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rule-based signals + AI sentiment combine to set priority. Never AI-only.\nconst d = $input.item.json;\nconst urgentPhrases = ['production', 'down', 'urgent', 'asap', 'not working', 'broken', 'critical'];\nconst msg = d.message.toLowerCase();\nconst hasUrgentLanguage = urgentPhrases.some(p => msg.includes(p));\n\nlet priority;\nif (hasUrgentLanguage || d.ai_sentiment_score < 20) priority = 'High';\nelse if (d.ai_sentiment === 'Frustrated' || d.ai_sentiment_score < 50) priority = 'Medium';\nelse priority = 'Low';\n\n// Anything except a routine General Inquiry, or any parse failure, forces human review\nconst needsHumanReview = d.ai_category !== 'General Inquiry' || d.ai_parse_failed || priority === 'High';\n\nreturn [{ json: { ...d, priority, needs_human_review: needsHumanReview } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "b7261307-dff4-453f-9337-b903d425d3c8",
+      "name": "Priority Detection"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "support_tickets",
+          "mode": "list",
+          "cachedResultName": "support_tickets"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "kb_context_found": false,
+            "client_email": "={{ $('Extract Ticket Information').item.json.client_email }}",
+            "client_name": "={{ $('Extract Ticket Information').item.json.client_name }}",
+            "category": "={{ $json.ai_category }}",
+            "sentiment": "={{ $json.ai_sentiment }}",
+            "sentiment_score": "={{ $json.ai_sentiment_score }}",
+            "priority": "={{ $json.priority }}",
+            "id": 0
+          },
+          "matchingColumns": [
+            "client_email"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "client_email",
+              "displayName": "client_email",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "project_name",
+              "displayName": "project_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sentiment",
+              "displayName": "sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sentiment_score",
+              "displayName": "sentiment_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "suggested_response",
+              "displayName": "suggested_response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "kb_context_found",
+              "displayName": "kb_context_found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reviewed_by",
+              "displayName": "reviewed_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "review_notes",
+              "displayName": "review_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reviewed_at",
+              "displayName": "reviewed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        0
+      ],
+      "id": "2207e553-0de6-4057-8635-89ae5f0b76a8",
+      "name": "Update rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "nOD6hje0JCtM0aeB",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Support Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Ticket Information",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Ticket Information": {
+      "main": [
+        [
+          {
+            "node": "valid submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "valid submission": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate AI Output": {
+      "main": [
+        [
+          {
+            "node": "Priority Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Priority Detection": {
+      "main": [
+        [
+          {
+            "node": "Update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2e5e3885-37c5-4b9f-a730-ac85dcae39da",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "bZLr3OXYBot1lMQd",
+  "tags": []
+}
