@@ -1,0 +1,130 @@
+# AI Customer Support Automation
+
+**Capstone Project (Option 1) — AI Automation Internship**
+**Petalnex Pvt. Ltd.** | Intern: Sajeel Ali
+
+An n8n workflow that takes in client support requests for Petalnex's software, AI, and automation projects, classifies and prioritizes them with Google Gemini, and — once complete — will ground suggested responses in a real knowledge base and keep a human in the loop before anything is sent.
+
+This is Petalnex's **second** capstone project, built after completing the AI Recruitment Automation project ahead of schedule. It reuses the same design principles: AI only where reasoning is genuinely needed, deterministic rules everywhere else, and a human always makes the final call on anything beyond routine.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Technologies](#technologies)
+- [Repository Structure](#repository-structure)
+- [Current Status](#current-status)
+- [How It Works (Built So Far)](#how-it-works-built-so-far)
+- [Design Decisions & Lessons Applied](#design-decisions--lessons-applied)
+- [Remaining Work](#remaining-work)
+- [Setup](#setup)
+- [Project Timeline](#project-timeline)
+
+---
+
+## Overview
+
+Petalnex delivers custom software, AI, and automation solutions to clients on an ongoing project basis. Once a solution is deployed, clients need a reliable channel to report issues, request changes, or check on progress — but handling these requests manually makes it hard to triage urgency, track resolution status, or maintain a consistent record of what was asked and how it was resolved.
+
+This project automates the intake and triage of that pipeline:
+
+**Inquiry intake → validation → AI classification & sentiment → priority detection → [knowledge-base search] → [human review] → ticket storage → [notifications]**
+
+Stages in brackets are designed and documented but not yet built — see [Remaining Work](#remaining-work).
+
+## Architecture
+
+![Architecture Diagram](./docs/CustomerSupport-Architecture-Diagram.png)
+
+Seven stages carry a ticket from submission to a recorded, human-reviewed outcome. Teal stages are AI-driven; every other stage is deterministic.
+
+Full breakdown of components, integrations, and design rationale: [`docs/CustomerSupport-Component-Credentials-List.docx`](./docs/CustomerSupport-Component-Credentials-List.docx)
+
+## Technologies
+
+| Layer | Technology | Role |
+|---|---|---|
+| Orchestration | [n8n](https://n8n.io) (self-hosted) | Form Trigger, Code, If, Postgres nodes |
+| AI / LLM | Google Gemini | Classification, sentiment analysis; embeddings planned for RAG |
+| Data storage | Supabase (Postgres) | Ticket records, classification, priority, full audit trail |
+| Notifications | Gmail SMTP | Planned: client acknowledgement + internal team routing |
+
+## Repository Structure
+
+```
+├── docs/
+│   ├── Project-Requirement-Document-CustomerSupport.pdf
+│   ├── CustomerSupport-Architecture-Diagram.png / .pdf
+│   └── CustomerSupport-Component-Credentials-List.docx
+├── workflows/
+│   └── AI-Customer-Support-Automation-CoreAndAI.json   # Core + AI layer, matches current n8n build
+├── reports/
+│   └── Daily-Progress-Report-CustomerSupport-Day1.docx ... Day3.docx
+└── README.md
+```
+
+## Current Status
+
+**Built and tested end-to-end:**
+- Inquiry intake via n8n Form Trigger
+- Deterministic field validation (name, email format, minimum message length)
+- Ticket storage in Supabase, with auto-generated `id` as the correct match key for later updates
+- AI classification into 7 categories + sentiment analysis via Gemini, with structured-output parsing and a safe fallback (defaults to "General Inquiry" / "Neutral" if the AI output can't be parsed)
+- Rule-based priority detection that combines urgent-language keyword matching with AI sentiment score — never AI-only
+- A second Postgres node updates the same ticket row (matched by `id`) with the AI results, without touching fields owned by later pipeline stages
+
+**Verified with real test data:** two different clients, two distinct rows, each correctly classified, scored, and prioritized, with no duplicate or orphaned rows.
+
+## How It Works (Built So Far)
+
+1. **Form Trigger** ("Support Request") — captures Client Name, Email, Project Name (optional), and Message
+2. **Extract Ticket Information** (Code) — trims and normalizes input, validates email format and minimum message length, deterministic and AI-free
+3. **valid submission** (If) — blocks incomplete or malformed submissions before any AI call is made
+4. **Insert rows in a table** (Postgres Insert) — creates the ticket row in `support_tickets`; the auto-generated `id` is captured for later use
+5. **Basic LLM Chain + Google Gemini Chat Model** — classifies the ticket into one of 7 categories and scores sentiment, returning structured JSON with reasoning
+6. **Parse & Validate AI Output** (Code) — parses the AI's JSON response and validates it against known category/sentiment values before anything downstream trusts it; falls back safely if parsing fails
+7. **Priority Detection** (Code) — combines rule-based urgent-language detection with the AI sentiment score to set High/Medium/Low priority, and flags whether the ticket needs human review
+8. **Update Ticket** (Postgres Update) — writes `category`, `sentiment`, `sentiment_score`, and `priority` back to the same row, **matched by `id`**, touching only those four fields
+
+## Design Decisions & Lessons Applied
+
+Carried over directly from the Recruitment Automation project's testing and hardening phase:
+
+- **Match on `id`, not email, for updates.** A client can submit multiple tickets over time; matching on email risked updating the wrong row or ambiguous matches. This was caught and fixed during Day 3 testing after an initial email-based match produced duplicate rows.
+- **Never let an Update node carry unrelated fields.** When a table is selected in n8n's Postgres node, it auto-populates every column into "Values to Send." Left unchecked, this silently overwrites fields owned by other pipeline stages (e.g. `status`, `reviewed_by`) with blanks — the same class of bug that broke `years_experience` on the recruitment project. Every Update node in this project only maps the fields it's actually responsible for.
+- **AI proposes, rules decide escalation.** Priority is never AI-only — a deterministic keyword check for urgent language always runs alongside the AI sentiment score, and disagreement or low confidence routes toward human review by default.
+- **Structured output is validated before trust.** The AI's classification response is parsed and checked against a known set of valid categories and sentiments; a parse failure defaults safely to "General Inquiry" / "Neutral" rather than breaking the workflow or inserting garbage data.
+
+## Remaining Work
+
+- **Knowledge-Base Search (RAG)** — a `support_kb` table with pgvector embeddings, seeded with realistic Petalnex support knowledge, queried via a Supabase Vector Store node
+- **Suggested Response** — Gemini drafts a reply grounded in the knowledge-base search results
+- **Human Review Gate** — a Wait node + approval form, mirroring the recruitment project's Human Review step, for any ticket flagged `needs_human_review`
+- **Notifications** — client acknowledgement email on intake, and internal routing email to the right team based on category
+- **Testing pass** — a structured test pass across normal, missing data, invalid data, external failure, AI failure, and security categories, matching the standard set on the recruitment project
+- **Final presentation**
+
+## Setup
+
+1. **n8n** — self-hosted via `npx n8n`. On Windows, set `N8N_RESTRICT_FILE_ACCESS_TO` in the same PowerShell session before launching.
+2. **Supabase** — run the `support_tickets` table schema (see `docs/CustomerSupport-Component-Credentials-List.docx`), and connect via the **Transaction pooler** (port `6543`).
+3. **Google Gemini** — obtain an API key; verify the model name against the `/models` endpoint before relying on it.
+4. **Gmail SMTP** — use an app password credential.
+5. Import [`workflows/AI-Customer-Support-Automation-CoreAndAI.json`](./workflows/AI-Customer-Support-Automation-CoreAndAI.json) into n8n and connect each credential. This file was generated to match the workflow built in the n8n UI as of Day 3 — re-export directly from n8n before final submission to capture any further changes.
+
+## Project Timeline
+
+| Day | Focus | Key Output |
+|---|---|---|
+| 1 | Requirement Analysis | Project Requirement Document |
+| 2 | Solution Architecture | Architecture diagram + component list |
+| 3 | Core Build + AI Integration (combined) | Trigger, validation, storage, AI classification/sentiment, priority detection — tested end-to-end |
+| — | Knowledge-Base Search, Human Review, Notifications | Pending |
+| — | Testing & Optimization | Pending |
+| — | Final Presentation & Demo | Pending |
+
+---
+
+*Petalnex Pvt. Ltd. — AI Automation Internship*
