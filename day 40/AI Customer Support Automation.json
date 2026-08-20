@@ -1,0 +1,1348 @@
+{
+  "name": "AI Customer Support Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Customer Support Intake",
+        "formDescription": "Submit your support inquiry below.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Client Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Project Name"
+            },
+            {
+              "fieldLabel": "Message",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -4608,
+        1184
+      ],
+      "id": "8e773745-8009-49ef-84df-9a0b271617f3",
+      "name": "Inquiry Intake",
+      "webhookId": "a5360d22-9f32-4116-8e27-1fc7d58f550f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const f = $input.item.json;\nconst clientName = String(f['Client Name'] || '').trim();\nconst clientEmail = String(f['Email'] || '').trim().toLowerCase();\nconst projectName = String(f['Project Name'] || '').trim();\nconst message = String(f['Message'] || '').replace(/\\s+/g, ' ').trim();\n\nreturn [{\n  json: {\n    client_name: clientName,\n    client_email: clientEmail,\n    project_name: projectName,\n    message: message,\n    submitted_at: new Date().toISOString(),\n    status: 'Open'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4384,
+        1184
+      ],
+      "id": "70dda77f-4445-4737-9f77-662ced807974",
+      "name": "Normalize Input"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "support_tickets",
+          "mode": "list",
+          "cachedResultName": "support_tickets"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "client_name": "={{ $json.client_name }}",
+            "client_email": "={{ $json.client_email }}",
+            "project_name": "={{ $json.project_name }}",
+            "message": "={{ $json.message }}",
+            "submitted_at": "={{ $json.submitted_at }}",
+            "kb_context_found": false
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_email",
+              "displayName": "client_email",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "project_name",
+              "displayName": "project_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sentiment",
+              "displayName": "sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sentiment_score",
+              "displayName": "sentiment_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "suggested_response",
+              "displayName": "suggested_response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "kb_context_found",
+              "displayName": "kb_context_found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "reviewed_by",
+              "displayName": "reviewed_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "review_notes",
+              "displayName": "review_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reviewed_at",
+              "displayName": "reviewed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -4160,
+        1184
+      ],
+      "id": "28769b66-6e1c-4bca-be84-aec1a2a3fc9a",
+      "name": "Ticket Creation",
+      "credentials": {
+        "postgres": {
+          "id": "nOD6hje0JCtM0aeB",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI support classifier. Analyze this client message and output ONLY valid JSON without markdown wrapping:\n\nClient message: {{ $('Normalize Input').item.json.message }}\nProject: {{ $('Normalize Input').item.json.project_name }}\n\nTasks:\n1. Classify category into: [\"Technical Issue\", \"Integration/API\", \"Project Status\", \"Bug Report\", \"Feature Request\", \"Billing\", \"General Inquiry\"].\n2. Detect sentiment as: \"Frustrated\", \"Neutral\", or \"Positive\".\n3. Assign sentiment_score: 0 (most negative) to 100 (most positive).\n4. Assign priority: \"High\", \"Medium\", or \"Low\" (Mark \"High\" if production outage, critical bug, data loss, or intense frustration).\n\nRespond EXACTLY in this JSON format:\n{\n  \"category\": \"General Inquiry\",\n  \"sentiment\": \"Neutral\",\n  \"sentiment_score\": 50,\n  \"priority\": \"Low\",\n  \"reasoning\": \"Brief explanation\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -3952,
+        1184
+      ],
+      "id": "cdc7cd7a-82b0-4541-9592-585828778ae8",
+      "name": "AI Triage & Analysis"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -4080,
+        1376
+      ],
+      "id": "002bce38-14d3-4b7b-9777-6ec36aaa8125",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2iuYFOKF0RtEigVq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json.text || $input.item.json.output || '';\nlet parsed;\ntry {\n  const jsonMatch = raw.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);\n} catch (e) {\n  parsed = null;\n}\n\nconst ticket = $('Ticket Creation').item.json;\nconst normalized = $('Normalize Input').item.json;\n\nconst category = parsed?.category || 'General Inquiry';\nconst sentiment = parsed?.sentiment || 'Neutral';\nconst sentimentScore = Number.isFinite(Number(parsed?.sentiment_score)) ? Number(parsed.sentiment_score) : 50;\nlet priority = parsed?.priority || 'Low';\n\nconst msg = normalized.message.toLowerCase();\nconst urgentKeywords = ['production', 'down', 'urgent', 'asap', 'broken', 'critical', 'fatal', 'error 500'];\nif (urgentKeywords.some(k => msg.includes(k)) || sentimentScore < 30) {\n  priority = 'High';\n}\n\nreturn [{\n  json: {\n    id: ticket.id,\n    client_name: normalized.client_name,\n    client_email: normalized.client_email,\n    project_name: normalized.project_name,\n    message: normalized.message,\n    category: category,\n    sentiment: sentiment,\n    sentiment_score: sentimentScore,\n    priority: priority,\n    reasoning: parsed?.reasoning || 'Defaulted'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3728,
+        1184
+      ],
+      "id": "7ca760bf-ed58-4056-8edd-1051fe6e68a9",
+      "name": "Parse & Prioritize"
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "tableName": {
+          "__rl": true,
+          "value": "support_kb",
+          "mode": "list",
+          "cachedResultName": "support_kb"
+        },
+        "prompt": "={{ $json.message }}",
+        "topK": 3,
+        "options": {
+          "queryName": "match_support_kb"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        -3504,
+        1184
+      ],
+      "id": "0f97a6a8-a5d0-47b1-b84b-1ccf1bb66119",
+      "name": "Knowledge-base search",
+      "credentials": {
+        "supabaseApi": {
+          "id": "xIZpxLiLqMK0PYJu",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -3648,
+        1376
+      ],
+      "id": "63fb4c07-664e-4bfa-a995-cc8a89249580",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2iuYFOKF0RtEigVq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const matches = $input.all();\nconst ticket = $('Parse & Prioritize').item.json;\n\nconst validMatches = matches.filter(m => (m.json.pageContent || m.json.content || '').trim().length > 0);\nconst kbContext = validMatches.map(m => m.json.pageContent || m.json.content).join('\\n\\n---\\n\\n');\n\nreturn [{\n  json: {\n    ...ticket,\n    kb_context: kbContext,\n    kb_context_found: validMatches.length > 0\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3280,
+        1184
+      ],
+      "id": "1a78671a-0bd7-42cc-b25b-6177e0b24cf2",
+      "name": "Combine KB Context"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a support agent drafting a direct reply for Petalnex client inquiries.\n\nClient message: {{ $json.message }}\nCategory: {{ $json.category }}\nKnowledge base context:\n{{ $json.kb_context }}\n\nInstructions:\n- If knowledge-base context provides the solution, draft a concise, friendly resolution.\n- If context does not cover the question, acknowledge the message and state that our specialized support team is reviewing it.\n- Return ONLY the body text of the reply. No email headers or signatures.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -3072,
+        1184
+      ],
+      "id": "cadff790-aae4-4f2d-9f97-2ebbd12050a8",
+      "name": "Suggested Response"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -3200,
+        1376
+      ],
+      "id": "5938f36c-5627-4300-9ea2-7f5006e0e0d5",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2iuYFOKF0RtEigVq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = ($input.item.json.text || $input.item.json.output || '').trim();\nconst ticket = $('Combine KB Context').item.json;\n\n// Only escalate if High Priority, Frustrated Sentiment, or non-General Inquiry\nconst requiresEscalation = Boolean(\n  ticket.priority === 'High' ||\n  ticket.sentiment === 'Frustrated' ||\n  ticket.category !== 'General Inquiry'\n);\n\nreturn [{\n  json: {\n    ...ticket,\n    suggested_response: responseText,\n    requires_escalation: requiresEscalation\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2848,
+        1184
+      ],
+      "id": "6a311831-80e8-4eeb-a8e8-e94a89ced1ff",
+      "name": "Evaluate Routing"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "support_tickets",
+          "mode": "list",
+          "cachedResultName": "support_tickets"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "category": "={{ $json.category }}",
+            "sentiment": "={{ $json.sentiment }}",
+            "sentiment_score": "={{ $json.sentiment_score }}",
+            "priority": "={{ $json.priority }}",
+            "suggested_response": "={{ $json.suggested_response }}",
+            "kb_context_found": "={{ $json.kb_context_found }}"
+          },
+          "matchingColumns": [
+            "id"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -2624,
+        1184
+      ],
+      "id": "7b62233d-1bde-4fb5-a80e-672a604c5a02",
+      "name": "Sync Ticket Details",
+      "credentials": {
+        "postgres": {
+          "id": "nOD6hje0JCtM0aeB",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "check-escalate",
+              "leftValue": "={{ $('Evaluate Routing').item.json.requires_escalation }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2400,
+        1184
+      ],
+      "id": "0c6df8ac-67c1-4a79-bd2e-114033be8c77",
+      "name": "Requires Human Escalation?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "flmg2773@gmail.com",
+        "toEmail": "sajeelali307@gmail.com",
+        "subject": "=Ticket Escalation Needed — {{ $('Evaluate Routing').item.json.category }} ({{ $('Evaluate Routing').item.json.priority }})",
+        "html": "=<b>Client:</b> {{ $('Evaluate Routing').item.json.client_name }} ({{ $('Evaluate Routing').item.json.client_email }})<br><b>Category:</b> {{ $('Evaluate Routing').item.json.category }}<br><b>Sentiment:</b> {{ $('Evaluate Routing').item.json.sentiment }} (Score: {{ $('Evaluate Routing').item.json.sentiment_score }})<br><b>Priority:</b> {{ $('Evaluate Routing').item.json.priority }}<br><br><b>Message:</b><br>{{ $('Evaluate Routing').item.json.message }}<br><br><b>Drafted Suggested Response:</b><br>{{ $('Evaluate Routing').item.json.suggested_response }}<br><br>Please review in the human portal.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -2192,
+        1072
+      ],
+      "id": "09271a32-390b-47f8-97e0-f10510cda0e5",
+      "name": "Notify Support Lead",
+      "webhookId": "7d2040a0-9817-4f99-8032-948e9f199123",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Ticket Human Escalation Review",
+        "formDescription": "=Client: {{ $('Evaluate Routing').item.json.client_name }}\nPriority: {{ $('Evaluate Routing').item.json.priority }}\nCategory: {{ $('Evaluate Routing').item.json.category }}\n\nClient Message:\n{{ $('Evaluate Routing').item.json.message }}\n\nSuggested Response:\n{{ $('Evaluate Routing').item.json.suggested_response }}",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "defaultValue": "Approve Suggested Response",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Approve Suggested Response"
+                  },
+                  {
+                    "option": "Edit and Send"
+                  },
+                  {
+                    "option": "Escalate to Team Lead"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reviewer Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Edited Response",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "Review Notes",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1968,
+        1072
+      ],
+      "id": "f4d3a655-fbc3-4356-8898-27f489dfc5b1",
+      "name": "Human Escalation Form",
+      "webhookId": "3d8e992b-0c58-40f0-bebc-974e56a9db7c"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Decision }}",
+                    "rightValue": "Approve Suggested Response",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Decision }}",
+                    "rightValue": "Edit and Send",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Decision }}",
+                    "rightValue": "Escalate to Team Lead",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1744,
+        1072
+      ],
+      "id": "01054779-a314-4e1b-b355-c1bf582f9e12",
+      "name": "Route Human Decision"
+    },
+    {
+      "parameters": {
+        "jsCode": "const review = $input.item.json;\nconst ticket = $('Evaluate Routing').item.json;\nreturn [{\n  json: {\n    ...ticket,\n    reviewer_name: review['Reviewer Name'] || '',\n    review_notes: review['Review Notes'] || '',\n    reviewed_at: new Date().toISOString(),\n    final_reply: ticket.suggested_response,\n    status: 'Resolved'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1520,
+        944
+      ],
+      "id": "7f0ea79f-694c-4205-9096-d1cf66e61e03",
+      "name": "Prepare Approved Reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const review = $input.item.json;\nconst ticket = $('Evaluate Routing').item.json;\nconst edited = String(review['Edited Response'] || '').trim();\nreturn [{\n  json: {\n    ...ticket,\n    reviewer_name: review['Reviewer Name'] || '',\n    review_notes: review['Review Notes'] || '',\n    reviewed_at: new Date().toISOString(),\n    final_reply: edited || ticket.suggested_response,\n    status: 'Resolved'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1520,
+        1104
+      ],
+      "id": "8d9b2e2f-42a1-4b3a-b1b8-f6b528b6ba8d",
+      "name": "Prepare Edited Reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const review = $input.item.json;\nconst ticket = $('Evaluate Routing').item.json;\nreturn [{\n  json: {\n    ...ticket,\n    reviewer_name: review['Reviewer Name'] || '',\n    review_notes: review['Review Notes'] || '',\n    reviewed_at: new Date().toISOString(),\n    status: 'Escalated'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1520,
+        1264
+      ],
+      "id": "9fb7e11f-9efb-42b8-8b05-a6b2a6a228df",
+      "name": "Prepare Tier-2 Escalation"
+    },
+    {
+      "parameters": {
+        "fromEmail": "flmg2773@gmail.com",
+        "toEmail": "={{ $json.client_email }}",
+        "subject": "Re: Your Petalnex Support Request",
+        "html": "=Hello {{ $json.client_name }},<br><br>{{ $json.final_reply }}<br><br>Best regards,<br>Petalnex Support Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -1312,
+        944
+      ],
+      "id": "6b5cce4d-3211-4585-9050-8b67623c9056",
+      "name": "Send Approved Client Email",
+      "webhookId": "b04f775e-8017-4df3-ad9b-246a18819fd1",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "flmg2773@gmail.com",
+        "toEmail": "={{ $json.client_email }}",
+        "subject": "Re: Your Petalnex Support Request",
+        "html": "=Hello {{ $json.client_name }},<br><br>{{ $json.final_reply }}<br><br>Best regards,<br>Petalnex Support Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -1312,
+        1104
+      ],
+      "id": "1d817d97-ee20-440b-a448-2814299d45c2",
+      "name": "Send Edited Client Email",
+      "webhookId": "3b94ff0b-d433-4db6-965f-931b7471a81a",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "flmg2773@gmail.com",
+        "toEmail": "sajeelali307@gmail.com",
+        "subject": "=Tier-2 Support Escalation — {{ $json.category }} ({{ $json.priority }})",
+        "html": "=<b>Escalated by:</b> {{ $json.reviewer_name }}<br><b>Notes:</b> {{ $json.review_notes }}<br><br><b>Client:</b> {{ $json.client_name }} ({{ $json.client_email }})<br><b>Message:</b> {{ $json.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -1312,
+        1264
+      ],
+      "id": "3c4adf0c-80f7-437b-be15-d6b3b8b5aba4",
+      "name": "Notify Tier-2 Lead",
+      "webhookId": "6ecb1e85-d7bc-495c-8f7d-698eddc0c72a",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "support_tickets",
+          "mode": "list",
+          "cachedResultName": "support_tickets"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Ticket Creation').item.json.id }}",
+            "status": "={{ $('Human Escalation Form').item.json.Decision === 'Escalate to Team Lead' ? 'escalated' : 'resolved' }}",
+            "reviewed_by": "={{ $('Human Escalation Form').item.json['Reviewer Name'] }}",
+            "review_notes": "={{ $('Human Escalation Form').item.json['Review Notes'] || '' }}",
+            "suggested_response": "={{ $('Human Escalation Form').item.json['Edited Response'] || $('Evaluate Routing').item.json.suggested_response }}",
+            "reviewed_at": "={{ $('Human Escalation Form').item.json.submittedAt || new Date().toISOString() }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "client_name",
+              "displayName": "client_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "client_email",
+              "displayName": "client_email",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "project_name",
+              "displayName": "project_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "submitted_at",
+              "displayName": "submitted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sentiment",
+              "displayName": "sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sentiment_score",
+              "displayName": "sentiment_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "priority",
+              "displayName": "priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "suggested_response",
+              "displayName": "suggested_response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "kb_context_found",
+              "displayName": "kb_context_found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reviewed_by",
+              "displayName": "reviewed_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "review_notes",
+              "displayName": "review_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reviewed_at",
+              "displayName": "reviewed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -1088,
+        1104
+      ],
+      "id": "e8da92b3-dd4b-4aaa-a025-949c33bde28d",
+      "name": "Update Escalated Ticket",
+      "credentials": {
+        "postgres": {
+          "id": "nOD6hje0JCtM0aeB",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "flmg2773@gmail.com",
+        "toEmail": "={{ $('Evaluate Routing').item.json.client_email }}",
+        "subject": "Re: Your Petalnex Support Request",
+        "html": "=Hello {{ $('Evaluate Routing').item.json.client_name }},<br><br>{{ $('Evaluate Routing').item.json.suggested_response }}<br><br>Best regards,<br>Petalnex Support Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -2192,
+        1328
+      ],
+      "id": "c90019a4-b239-43a5-b56d-d945b04a101f",
+      "name": "Send Auto-Reply",
+      "webhookId": "f74eeb27-022a-4770-85aa-629173066fd5",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "support_tickets",
+          "mode": "list",
+          "cachedResultName": "support_tickets"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Evaluate Routing').item.json.id }}",
+            "status": "Resolved",
+            "reviewed_by": "Automated Knowledge-Base Engine",
+            "review_notes": "Automatically resolved via high-confidence KB match.",
+            "reviewed_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [
+            "id"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        -1968,
+        1328
+      ],
+      "id": "fd6930db-e2c6-43be-969c-6ce6c2a91b63",
+      "name": "Mark Auto-Resolved",
+      "credentials": {
+        "postgres": {
+          "id": "nOD6hje0JCtM0aeB",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Inquiry Intake": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Ticket Creation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ticket Creation": {
+      "main": [
+        [
+          {
+            "node": "AI Triage & Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Triage & Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Triage & Analysis": {
+      "main": [
+        [
+          {
+            "node": "Parse & Prioritize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Prioritize": {
+      "main": [
+        [
+          {
+            "node": "Knowledge-base search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Knowledge-base search",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge-base search": {
+      "main": [
+        [
+          {
+            "node": "Combine KB Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine KB Context": {
+      "main": [
+        [
+          {
+            "node": "Suggested Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Suggested Response",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Suggested Response": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Routing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Routing": {
+      "main": [
+        [
+          {
+            "node": "Sync Ticket Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync Ticket Details": {
+      "main": [
+        [
+          {
+            "node": "Requires Human Escalation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requires Human Escalation?": {
+      "main": [
+        [
+          {
+            "node": "Notify Support Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Auto-Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Support Lead": {
+      "main": [
+        [
+          {
+            "node": "Human Escalation Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Escalation Form": {
+      "main": [
+        [
+          {
+            "node": "Route Human Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Human Decision": {
+      "main": [
+        [
+          {
+            "node": "Prepare Approved Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Edited Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Tier-2 Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Approved Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Approved Client Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Edited Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Edited Client Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Tier-2 Escalation": {
+      "main": [
+        [
+          {
+            "node": "Notify Tier-2 Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Approved Client Email": {
+      "main": [
+        [
+          {
+            "node": "Update Escalated Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Edited Client Email": {
+      "main": [
+        [
+          {
+            "node": "Update Escalated Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Tier-2 Lead": {
+      "main": [
+        [
+          {
+            "node": "Update Escalated Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Auto-Reply": {
+      "main": [
+        [
+          {
+            "node": "Mark Auto-Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8612e57a-173b-43b0-8149-03d57695cad3",
+  "meta": {
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "Fo2TcJeinA0koqtx",
+  "tags": []
+}
