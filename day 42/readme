@@ -1,1 +1,239 @@
+# AI Customer Support Automation
 
+An end-to-end n8n workflow that validates, classifies, and drafts replies to Petalnex client support tickets — with a Retrieval-Augmented Generation (RAG) knowledge base, dual-layer security screening, and a human-in-the-loop review gate for anything sensitive.
+
+Built as a capstone project for the **Petalnex AI Automation Internship**.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Workflow Walkthrough](#workflow-walkthrough)
+- [Setup](#setup)
+- [Demo Scenarios](#demo-scenarios)
+- [Security](#security)
+- [Error Handling & Reliability](#error-handling--reliability)
+- [Limitations](#limitations)
+- [Future Improvements](#future-improvements)
+- [Repo Structure](#repo-structure)
+
+---
+
+## Overview
+
+Petalnex is a project-based software / AI / digital-services company. Every client engagement generates a steady stream of support requests — technical issues, integration questions, billing, project-status checks, and more. This workflow automates the full lifecycle of a ticket:
+
+1. **Validate** the submission deterministically, before any AI cost is spent
+2. **Classify** it by category, sentiment, and priority using Gemini
+3. **Screen** it for prompt injection / XSS / SQL injection attempts
+4. **Retrieve** relevant knowledge-base context via pgvector similarity search
+5. **Draft** a grounded reply with Gemini
+6. **Route**: auto-resolve routine tickets, or pause for human review on anything risky, urgent, frustrated, or non-routine
+
+Nothing reaches a client automatically unless it has passed both the deterministic validation gate and the escalation check.
+
+---
+
+## Architecture
+
+```
+Inquiry Intake (Form Trigger)
+        │
+        ▼
+Normalize Input (Code)
+        │
+        ▼
+  valid submission? (IF) ──── No ──▶ Notify Invalid Submission (email)
+        │ Yes
+        ▼
+Ticket Creation (Postgres Insert)
+        │
+        ▼
+AI Triage & Analysis (Gemini) ──▶ Parse & Prioritize (Code)
+        │
+        ▼
+Knowledge-base search (Supabase Vector Store / pgvector)
+        │
+        ▼
+Combine KB Context (Code)
+        │
+        ▼
+Suggested Response (Gemini)
+        │
+        ▼
+Evaluate Routing (Code) ──▶ Sync Ticket Details (Postgres Update)
+        │
+        ▼
+Requires Human Escalation? (IF)
+   │                              │
+   No                            Yes
+   │                              │
+   ▼                              ▼
+Send Auto-Reply              Notify Support Lead
+   │                              │
+   ▼                              ▼
+Mark Auto-Resolved         Human Escalation Form (Wait node)
+                                   │
+                                   ▼
+                          Route Human Decision (Switch)
+                    ┌──────────────┼──────────────┐
+                    ▼              ▼              ▼
+             Approve         Edit and Send   Escalate to
+             Suggested                        Team Lead
+             Response
+                    │              │              │
+                    ▼              ▼              ▼
+             Send Approved  Send Edited    Notify Tier-2
+             Client Email   Client Email       Lead
+                    └──────────────┼──────────────┘
+                                   ▼
+                        Update Escalated Ticket (Postgres)
+```
+
+**Layer legend:**
+- **Deterministic core** — Normalize Input, valid submission?, Ticket Creation
+- **AI / RAG layer** — AI Triage & Analysis, Parse & Prioritize, Knowledge-base search, Combine KB Context, Suggested Response, Evaluate Routing
+- **Human-in-the-loop** — Requires Human Escalation?, Notify Support Lead, Human Escalation Form, Route Human Decision, and the three outcome branches
+
+---
+
+## Tech Stack
+
+| Category | Tool | Role |
+|---|---|---|
+| Orchestration | **n8n** (self-hosted) | Runs the full workflow, including the resumable Wait/Form node for human review |
+| Database | **Supabase / Postgres** | Ticket storage; connects via the **Transaction pooler (port 6543)** for a reliable SSL chain |
+| Vector search | **pgvector + Supabase Vector Store** | `support_kb` table, queried through the `match_support_kb` RPC function |
+| AI models | **Google Gemini** | Chat model for triage, sentiment, and response drafting; `models/gemini-embedding-001` for embeddings (3072 dimensions) |
+| Notifications | **Gmail** (SMTP / OAuth2) | Client replies, support-lead alerts, tier-2 escalation emails |
+| Version control | **GitHub** | Workflow JSON, documentation, daily progress reports |
+
+---
+
+## Workflow Walkthrough
+
+### 1. Intake & Validation (deterministic core)
+- **Inquiry Intake** (Form Trigger) collects Client Name, Email, Project Name, Message
+- **Normalize Input** (Code) trims/normalizes fields and runs deterministic checks:
+  - Missing client name → rejected
+  - Email fails `^[^@\s]+@[^@\s]+\.[^@\s]+$` → rejected
+  - Message under 15 characters → rejected
+- **valid submission?** (IF) branches on `is_valid`. Invalid submissions go straight to **Notify Invalid Submission** — they never reach the AI layer, so no Gemini spend is wasted on bad data.
+- **Ticket Creation** (Postgres Insert) stores the valid ticket.
+
+### 2. AI Classification, Sentiment & Security Screening
+- **AI Triage & Analysis** (Gemini) classifies every field for:
+  - **Category**: `Technical Issue`, `Integration/API`, `Project Status`, `Bug Report`, `Feature Request`, `Billing`, `General Inquiry` — or `Security / Malicious Input` as an override
+  - **Sentiment**: `Frustrated`, `Neutral`, `Positive` + a 0–100 `sentiment_score`
+  - **Priority**: `High`, `Medium`, `Low`
+  - **is_injection**: `true`/`false` — flags XSS, SQL injection, or prompt-injection patterns in *any* field
+- **Parse & Prioritize** (Code) parses the LLM's JSON defensively (regex-matched `{...}` block, `try/catch`, safe fallback to `null`) and re-runs an **independent regex check** for injection patterns (`DROP TABLE`, `UNION SELECT`, `<script>`, `exec(`, etc.) as a safety net — either the AI or the regex alone is enough to force `category = "Security / Malicious Input"` and `priority = "High"`.
+
+### 3. Knowledge-Base Retrieval (RAG)
+- **Knowledge-base search** (Supabase Vector Store) embeds the ticket message with `gemini-embedding-001` and retrieves the **top 3** nearest entries from `support_kb` via the `match_support_kb` RPC.
+- **Combine KB Context** (Code) merges the retrieved snippets into a single context block.
+
+### 4. AI-Suggested Response Generation
+- **Suggested Response** (Gemini) drafts a reply grounded in the KB context:
+  - If `is_injection` is true, it **never** attempts a normal reply — it outputs a fixed warning instead:
+    > "WARNING: The client is attempting to inject scripts or malicious SQL payload. Do not execute or copy unchecked parameters."
+  - If the KB context covers the question, it drafts a concise, friendly resolution.
+  - If the KB doesn't cover it, it acknowledges the message and says a specialist is reviewing — it never invents an answer.
+  - Output is plain text only (never JSON), so it drops straight into an email body.
+
+### 5. Routing & Ticket Sync
+- **Evaluate Routing** (Code) sets `requires_escalation = true` if **any** of the following hold:
+  - `is_injection` is true, or `category = "Security / Malicious Input"`
+  - `priority = "High"`
+  - `sentiment = "Frustrated"`
+  - `category` is anything other than `"General Inquiry"`
+- **Sync Ticket Details** (Postgres Update) writes category, sentiment, priority, and the suggested response back onto the ticket — **matched on `id`**, never on `client_email`, so repeat clients with multiple open tickets can't cross-write each other.
+
+### 6. Human Review Gate & Decision Routing
+- **Requires Human Escalation?** (IF) branches:
+  - **No** → **Send Auto-Reply** → **Mark Auto-Resolved**. No human touches the ticket.
+  - **Yes** → **Notify Support Lead** (full ticket context + AI draft) → **Human Escalation Form**, an n8n Wait node that pauses the workflow and opens a resumable review form.
+- The reviewer picks one of three decisions (and can add their name, an edited response, and free-text notes):
+  - **Approve Suggested Response** → Prepare Approved Reply → Send Approved Client Email
+  - **Edit and Send** → Prepare Edited Reply (uses the reviewer's own text) → Send Edited Client Email
+  - **Escalate to Team Lead** → Prepare Tier-2 Escalation → Notify Tier-2 Lead
+- All three paths converge on **Update Escalated Ticket** (Postgres), recording the reviewer, decision, and notes.
+
+---
+
+## Setup
+
+1. **n8n**: self-hosted (`npx n8n`). Import `workflow.json` from this repo.
+2. **Supabase / Postgres**:
+   - Create the tickets table and `support_kb` table (see `/sql`).
+   - Enable `pgvector`; create the `match_support_kb` RPC function with a `filter jsonb default '{}'` parameter to match n8n's expected signature.
+   - `support_kb` embeddings are `vector(3072)` — `gemini-embedding-001` outputs 3072 dimensions, not the 768 n8n's UI suggests.
+   - Grant permissions: `grant all on public.support_kb to anon, authenticated, service_role;` and disable RLS on `support_kb` only (not on ticket tables).
+   - **Always connect via the Transaction pooler (port 6543)** in n8n's Postgres/Supabase credentials — the Session pooler (5432) causes SSL certificate chain errors even with "Ignore SSL Issues" enabled.
+3. **Google Gemini**: create an API key in Google AI Studio; confirm available models via the `/models` endpoint before hardcoding a model name (availability varies by key age).
+4. **Gmail**: set up OAuth2 (or SMTP with an app password) for outbound notifications. If using OAuth2, set "Allowed HTTP Request Domains" to **All**, or the trigger/send will silently fail.
+5. **Credentials**: store all of the above in n8n's credential store — never hardcode keys or connection strings inside a node.
+
+---
+
+## Demo Scenarios
+
+| Scenario | Expected outcome | Recommended human decision |
+|---|---|---|
+| **Routine general inquiry** (e.g. "what's your typical response time?") | `General Inquiry`, Low priority, Neutral → auto-resolved, no human involved | N/A — never reaches the review form |
+| **Frustrated, high-priority bug report** | Escalates on priority + sentiment + category → Support Lead notified → review form opens | **Escalate to Team Lead** if it's a real blocking bug; **Approve/Edit** if the KB already covers the fix |
+| **Malicious payload in the message field** (SQL/XSS injection attempt) | Flagged by both Gemini and the regex fallback → forced `Security / Malicious Input`, High priority → fixed warning drafted, never a normal reply | **Escalate to Team Lead** — this is a security event, not a question to answer |
+
+---
+
+## Security
+
+- **Dual-layer defense**: every message is checked for injection/XSS both by the LLM's own judgment and by an independent regex — no single point of failure on security classification.
+- **No AI auto-send on flagged tickets**: injection-flagged tickets are always force-routed to a human; the AI is never allowed to send its own reply on anything suspicious.
+- **Credential isolation**: Gmail, Supabase, and Gemini credentials all live in n8n's credential store, never inside node parameters.
+- **Least-privilege KB access**: RLS is disabled only on `support_kb` (a non-sensitive knowledge table), not on ticket data.
+
+---
+
+## Error Handling & Reliability
+
+- **Validate before spending**: bad submissions are rejected in plain code before any AI call is made.
+- **Defensive JSON parsing**: `Parse & Prioritize` extracts the LLM's JSON with a regex match wrapped in `try/catch`, falling back to safe defaults instead of crashing the run on a malformed response.
+- **Safe, targeted updates**: every Postgres update matches on the ticket's `id`, never on `client_email`.
+- **Auditability**: every triage decision carries a `reasoning` string explaining why that category/priority was assigned.
+
+---
+
+## Limitations
+
+- Fixed set of 7 categories plus one security override — doesn't adapt to new ticket types on its own
+- Single-channel intake — only the n8n form trigger; no email/Slack/WhatsApp yet
+- Top-K 3 retrieval can miss an edge-case KB entry on ambiguous questions
+- Prompts and replies are English-only
+
+## Future Improvements
+
+- Multi-channel intake (email, Slack, WhatsApp) feeding the same core pipeline
+- SLA timers with auto-escalation if a human review sits too long
+- Analytics dashboard on category, sentiment, and escalation trends
+- Expanding KB coverage and tuning Top-K for stronger retrieval
+
+---
+
+## Repo Structure
+
+```
+.
+├── workflow.json              # Exported n8n workflow
+├── sql/                       # Table + RPC function definitions (tickets, support_kb, match_support_kb)
+├── docs/                      # Daily progress reports, PRD, architecture notes
+├── presentation/               # Final capstone presentation
+└── README.md
+```
+
+---
+
+Built by **Sajeel Ali** as part of the Petalnex AI Automation Internship.
