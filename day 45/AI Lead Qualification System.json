@@ -1,0 +1,119 @@
+{
+  "name": "My workflow 16",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -352,
+        -32
+      ],
+      "id": "9d388a4f-9ec1-472f-a5dc-fcc5a16045c4",
+      "name": "Webhook",
+      "webhookId": "172831db-02ba-420a-a332-eb28af1ec2fe"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nconst errors = [];\n\n// Required fields check\nif (!body.name || body.name.trim() === '') errors.push('Missing name');\nif (!body.email || body.email.trim() === '') errors.push('Missing email');\n\n// Email format check\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nif (body.email && !emailRegex.test(body.email)) errors.push('Invalid email format');\n\nif (errors.length > 0) {\n  return [{\n    json: {\n      valid: false,\n      errors: errors,\n      original: body\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    name: body.name.trim(),\n    email: body.email.trim().toLowerCase(),\n    company: body.company || null,\n    phone: body.phone || null,\n    message: body.message || null,\n    source: 'webhook'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        -32
+      ],
+      "id": "b9315de8-01e0-4bd9-8f29-70756c9b246e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "tableId": "leads",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "name",
+              "fieldValue": "={{ $json.name }}"
+            },
+            {
+              "fieldId": "email",
+              "fieldValue": "={{ $json.email }}"
+            },
+            {
+              "fieldId": "company",
+              "fieldValue": "={{ $json.company }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ $json.message }}"
+            },
+            {
+              "fieldId": "source",
+              "fieldValue": "={{ $json.source }}"
+            },
+            {
+              "fieldId": "phone",
+              "fieldValue": "={{ $json.phone }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        64,
+        -32
+      ],
+      "id": "a8416077-13d4-4ec6-ac8e-184d45d45605",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "xIZpxLiLqMK0PYJu",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2798432d-69c9-4a19-80a0-bfd1cd037dad",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "CAmswmysWPibNmR9",
+  "tags": []
+}
