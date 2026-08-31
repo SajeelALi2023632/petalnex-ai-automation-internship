@@ -1,0 +1,589 @@
+{
+  "name": "AI Lead Qualification System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0fbd6ee3-1e1e-4506-bb52-d65c1053e359",
+      "name": "Webhook - Lead Intake",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2000,
+        112
+      ],
+      "webhookId": "lead-intake-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nconst errors = [];\n\nif (!body.name || body.name.trim() === '') errors.push('Missing name');\nif (!body.email || body.email.trim() === '') errors.push('Missing email');\n\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nif (body.email && !emailRegex.test(body.email)) errors.push('Invalid email format');\n\nif (errors.length > 0) {\n  return [{\n    json: {\n      valid: false,\n      errors: errors,\n      original: body\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    name: body.name.trim(),\n    email: body.email.trim().toLowerCase(),\n    company: body.company || null,\n    phone: body.phone || null,\n    message: body.message || null,\n    source: 'webhook'\n  }\n}];"
+      },
+      "id": "1c9dfce4-aa01-4fce-a69d-79df6b11c7eb",
+      "name": "Validate & Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "valid-check",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "79294d7f-bb17-4f63-9b34-6a11c8ee613a",
+      "name": "IF Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1520,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"errors\": $json.errors } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "5260f84c-b27f-46de-aaf8-875cbd7d00be",
+      "name": "Respond - Invalid Lead",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        -1280,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "leads",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "name",
+              "fieldValue": "={{ $json.name }}"
+            },
+            {
+              "fieldId": "email",
+              "fieldValue": "={{ $json.email }}"
+            },
+            {
+              "fieldId": "company",
+              "fieldValue": "={{ $json.company }}"
+            },
+            {
+              "fieldId": "phone",
+              "fieldValue": "={{ $json.phone }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ $json.message }}"
+            },
+            {
+              "fieldId": "source",
+              "fieldValue": "={{ $json.source }}"
+            }
+          ]
+        }
+      },
+      "id": "c824f072-70ed-47de-8c60-8e392ee4d049",
+      "name": "Supabase - Insert Lead",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        32
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xIZpxLiLqMK0PYJu",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a B2B lead qualification assistant. Evaluate how sales-ready this lead is based on the data below.\n\nName: {{ $json.name }}\nEmail: {{ $json.email }}\nCompany: {{ $json.company }}\nPhone: {{ $json.phone }}\nMessage: {{ $json.message }}\n\nScoring guidance:\n- Consider clarity and specificity of intent in their message (e.g. asking about pricing, enterprise plans, or a demo signals higher intent than a vague inquiry)\n- Consider company context if provided (named company vs. blank, business email domain vs. generic)\n- Consider completeness of the submission\n- score 80-100 = hot (clear buying intent, strong fit signals)\n- score 50-79 = warm (interested but needs nurturing)\n- score 0-49 = cold (low intent or insufficient info)\n\nReturn your evaluation.",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "532abd54-00de-46ea-855f-17015cc4e7a4",
+      "name": "AI Agent - Qualify (Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -1040,
+        -304
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "id": "4da136e1-e4c7-4c84-b1e2-ea6b5a8ce776",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        16
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2iuYFOKF0RtEigVq",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"score\": { \"type\": \"integer\" },\n    \"status\": { \"type\": \"string\", \"enum\": [\"hot\", \"warm\", \"cold\"] },\n    \"reasoning\": { \"type\": \"string\" }\n  },\n  \"required\": [\"score\", \"status\", \"reasoning\"]\n}"
+      },
+      "id": "bcaad67c-d7c0-4660-939a-2b8c44b99220",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -912,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a B2B lead qualification assistant. Evaluate how sales-ready this lead is based on the data below.\n\nName: {{ $('Supabase - Insert Lead').item.json.name }}\nEmail: {{ $('Supabase - Insert Lead').item.json.email }}\nCompany: {{ $('Supabase - Insert Lead').item.json.company }}\nPhone: {{ $('Supabase - Insert Lead').item.json.phone }}\nMessage: {{ $('Supabase - Insert Lead').item.json.message }}\n\nScoring guidance:\n- Consider clarity and specificity of intent in their message (e.g. asking about pricing, enterprise plans, or a demo signals higher intent than a vague inquiry)\n- Consider company context if provided (named company vs. blank, business email domain vs. generic)\n- Consider completeness of the submission\n- score 80-100 = hot (clear buying intent, strong fit signals)\n- score 50-79 = warm (interested but needs nurturing)\n- score 0-49 = cold (low intent or insufficient info)\n\nReturn your evaluation.",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "70e2a717-1a55-4822-8789-54717654ff57",
+      "name": "AI Agent - Qualify (Groq Fallback)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -1040,
+        368
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b1d5a86d-f116-4e90-9651-3c76fbade46b",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -1056,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"score\": { \"type\": \"integer\" },\n    \"status\": { \"type\": \"string\", \"enum\": [\"hot\", \"warm\", \"cold\"] },\n    \"reasoning\": { \"type\": \"string\" }\n  },\n  \"required\": [\"score\", \"status\", \"reasoning\"]\n}"
+      },
+      "id": "759a1fe8-9a5d-4b8c-9ee7-552216702324",
+      "name": "Structured Output Parser (Groq)",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Deterministic parse + validation of AI output, with structured retry-style result object.\n// Works whether this item came from the Gemini agent or the Groq fallback agent.\n\nlet attempts = 1;\nlet success = false;\nlet error = null;\nlet parsed = null;\n\ntry {\n  const output = $json.output ?? $json;\n\n  // n8n's structured output parser typically returns the parsed object directly\n  // under `output`, but fall back to parsing raw text if needed.\n  if (typeof output === 'object' && output.score !== undefined) {\n    parsed = output;\n  } else if (typeof output === 'string') {\n    parsed = JSON.parse(output);\n  } else {\n    throw new Error('Unrecognized AI output shape');\n  }\n\n  if (\n    typeof parsed.score !== 'number' ||\n    !['hot', 'warm', 'cold'].includes(parsed.status) ||\n    typeof parsed.reasoning !== 'string'\n  ) {\n    throw new Error('AI output failed schema validation');\n  }\n\n  success = true;\n} catch (err) {\n  error = err.message;\n  // Safe fallback so the pipeline never silently drops a lead\n  parsed = {\n    score: 0,\n    status: 'cold',\n    reasoning: 'AI qualification failed; defaulted to cold for manual review.'\n  };\n}\n\nreturn {\n  json: {\n    success,\n    statusCode: success ? 200 : 500,\n    error,\n    attempts,\n    score: parsed.score,\n    status: parsed.status,\n    reasoning: parsed.reasoning,\n    id: $('Supabase - Insert Lead').item.json.id,\n    name: $('Supabase - Insert Lead').item.json.name,\n    email: $('Supabase - Insert Lead').item.json.email,\n    company: $('Supabase - Insert Lead').item.json.company\n  }\n};"
+      },
+      "id": "8938a8db-62a8-468c-9c07-e7eb75548896",
+      "name": "Parse & Validate AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "leads",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            },
+            {
+              "fieldId": "score",
+              "fieldValue": "={{ $json.score }}"
+            },
+            {
+              "fieldId": "qualification_reason",
+              "fieldValue": "={{ $json.reasoning }}"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "id": "9e2e88c9-d6ff-4f02-88f0-920c07ea22db",
+      "name": "Supabase - Update Score",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        112
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "xIZpxLiLqMK0PYJu",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "hot-check",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 80,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "32849ffb-607a-4b47-9601-e7ed53cfee9c",
+      "name": "IF Score >= 80 (Hot)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "sajeelali307@gmail.com",
+        "toEmail": "flmh2773@gmail.com",
+        "subject": "=🔥 Hot Lead: {{ $json.name }} ({{ $json.company }})",
+        "html": "=<p><strong>New hot lead qualified — score {{ $json.score }}/100</strong></p><p><b>Name:</b> {{ $json.name }}</p><p><b>Email:</b> {{ $json.email }}</p><p><b>Company:</b> {{ $json.company }}</p><p><b>AI Reasoning:</b> {{ $json.reasoning }}</p>",
+        "options": {}
+      },
+      "id": "5514b1ba-b8c7-46e1-9f66-18a5cfc7b4d5",
+      "name": "Gmail - Sales Alert (Hot)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "aab37c0f-b029-4497-a200-b80ce68e0f13",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "sajeelali307@gmail.com",
+        "toEmail": "={{ $json.email }}",
+        "subject": "Thanks for reaching out!",
+        "html": "=<p>Hi {{ $json.name }},</p><p>Thanks for your interest! One of our team members will follow up with more information shortly. In the meantime, feel free to reply to this email with any questions.</p><p>Best,<br>The Team</p>",
+        "options": {}
+      },
+      "id": "b72dfab9-e39a-468d-807f-70f6eef2e525",
+      "name": "Gmail - Nurture Follow-up",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        224
+      ],
+      "webhookId": "de1a37ec-4762-43b4-a1c9-f7d53fc8ab03",
+      "credentials": {
+        "smtp": {
+          "id": "Dx1F4PbUgZupfNSX",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"leadId\": $('Supabase - Update Score').item.json.id, \"status\": $('Parse & Validate AI Output').item.json.status, \"score\": $('Parse & Validate AI Output').item.json.score } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "4828809b-6686-49a0-aa4e-d41ae79b3233",
+      "name": "Respond - Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        112
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook - Lead Intake": {
+      "main": [
+        [
+          {
+            "node": "Validate & Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Normalize": {
+      "main": [
+        [
+          {
+            "node": "IF Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Valid": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Insert Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - Invalid Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Insert Lead": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Qualify (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Qualify (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent - Qualify (Groq Fallback)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Qualify (Gemini)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent - Qualify (Gemini)",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Qualify (Groq Fallback)": {
+      "main": [
+        [
+          {
+            "node": "Parse & Validate AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Qualify (Groq Fallback)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser (Groq)": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent - Qualify (Groq Fallback)",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Validate AI Output": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Update Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Update Score": {
+      "main": [
+        [
+          {
+            "node": "IF Score >= 80 (Hot)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Score >= 80 (Hot)": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Sales Alert (Hot)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail - Nurture Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Sales Alert (Hot)": {
+      "main": [
+        [
+          {
+            "node": "Respond - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Nurture Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Respond - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c9b81104-d414-4350-a670-2c93949a5d5b",
+  "meta": {
+    "instanceId": "18c617c82b1c0b818b47273d6be8e649746f31a6c72f0f66ec78c8b8c71fa441"
+  },
+  "nodeGroups": [],
+  "id": "qFeOxrzbIi0T1mY8",
+  "tags": []
+}
